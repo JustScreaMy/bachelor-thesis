@@ -1,7 +1,7 @@
 from textual.app import ComposeResult
-from textual.containers import VerticalGroup
+from textual.containers import Vertical, Horizontal
 from textual.widget import Widget
-from textual.widgets import Static
+from textual.widgets import Label
 
 from pve_tui.shared import models
 
@@ -9,22 +9,65 @@ class ServerBrief(Widget):
     DEFAULT_CSS = '''
         ServerBrief {
             height: auto;
-            border: hkey gray;
+            border: none $primary-darken-1;
+            padding: 1;
+        }
+
+        ServerBrief:hover {
+            background: $panel-lighten-3;
+        }
+
+        .server-header {
+            width: 100%;
+            height: 1;
+        }
+
+        .server-name {
+            text-style: bold;
+            color: $text;
+        }
+
+        .server-id {
+            color: $text-muted;
+        }
+
+        .status-running {
+            color: $success;
+            text-style: bold;
+        }
+
+        .status-stopped {
+            color: $error;
+            text-style: bold;
+        }
+
+        .metrics {
+            margin-top: 1;
+            color: $text-muted;
         }
     '''
-
-    can_focus = True
 
     def __init__(self, server_info: models.ServerBrief, **kwargs) -> None:
         super().__init__(**kwargs)
         self.server_info = server_info
 
     def compose(self) -> ComposeResult:
-        yield VerticalGroup(
-            Static(f'{self.server_info.name} (ID: {self.server_info.server_id})', classes='server-name'),
-            Static(f'Status: {self.server_info.status.value}', classes='server-status'),
-            Static(f'CPU: {self.server_info.cpus} cores, Usage: {self.server_info.cpu_usage}%', classes='server-cpu'),
-            Static(f'Memory: {self.server_info.memory} MB, Used: {self.server_info.memory_used} MB',
-                   classes='server-memory'),
-            Static(f'Uptime: {self.server_info.uptime} seconds', classes='server-uptime'),
+        # Determine status class
+        status_class = "status-running" if self.server_info.status == models.ServerStatus.Running else "status-stopped"
+        status_icon = "●" if self.server_info.status == models.ServerStatus.Running else "○"
+
+        yield Horizontal(
+            Label(f"{self.server_info.name}", classes="server-name"),
+            Label(f" #{self.server_info.server_id}", classes="server-id"),
+            Label(f" {status_icon} {self.server_info.status.value}", classes=f"server-status {status_class}"),
+            classes="server-header"
         )
+
+        if self.server_info.status == models.ServerStatus.Running:
+            metrics_text = (
+                f"CPU: {self.server_info.cpu_usage}% ({self.server_info.cpus}c) | "
+                f"Mem: {int(self.server_info.memory_used/1024)}G/{int(self.server_info.memory/1024)}G"
+            )
+            yield Label(metrics_text, classes="metrics")
+        else:
+            yield Label("Offline", classes="metrics")

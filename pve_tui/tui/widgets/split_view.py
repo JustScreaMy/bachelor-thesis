@@ -11,25 +11,36 @@ class SplitView(Widget):
     SplitView {
         layout: horizontal;
         height: 100%;
-        border: solid gray;
+        background: $surface;
     }
 
     .split-pane {
-        width: 1fr;
         height: 100%;
-        padding: 1;
-        # border: solid gray;
+        padding: 0 1;
+    }
+
+    SplitView > .split-pane:first-child {
+        border-right: solid $border;
         background: $panel;
     }
 
-    .split-pane:focus-within {
-        # border: green;
-        padding: 1;
+    SplitView > .split-pane:last-child {
+        width: 1fr;
         background: $surface;
+    }
+
+    .split-pane:focus-within {
+        background: $surface-lighten-1;
     }
     '''
 
-    def __init__(self, left: Widget, right: Widget, **kwargs) -> None:
+    def __init__(
+        self,
+        left: Widget,
+        right: Widget,
+        sidebar_width: str | int | float = "30%",
+        **kwargs
+    ) -> None:
         super().__init__(**kwargs)
         self.left = left
         self.right = right
@@ -39,6 +50,12 @@ class SplitView(Widget):
 
         self.left.add_class('split-pane')
         self.right.add_class('split-pane')
+
+        # Handle float as percentage (e.g. 0.25 -> "25%")
+        if isinstance(sidebar_width, float) and 0 < sidebar_width < 1:
+            self.left.styles.width = f"{sidebar_width * 100:.1f}%"
+        else:
+            self.left.styles.width = sidebar_width
 
     def compose(self) -> ComposeResult:
         yield self.left

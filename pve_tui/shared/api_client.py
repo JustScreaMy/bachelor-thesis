@@ -1,25 +1,29 @@
-from requests import Session, Request
+import urllib3
+from requests import Session, Response
+from urllib3.exceptions import SecurityWarning
+
+# Most of Proxmox VE instances use self-signed certificates, so we disable warnings here.
+urllib3.disable_warnings(SecurityWarning)
+
 
 class APIClient:
     proxmox_base_url: str
-    user_name: str
-    user_realm: str
+
+    auth_token_id: str
     auth_token: str
-    auth_token_name: str
+    session: Session
 
-    def __init__(self, proxmox_base_url: str, user_name: str, user_realm: str, auth_token: str, auth_token_name: str) -> None:
+    def __init__(self, proxmox_base_url: str, auth_token_id: str, auth_token: str) -> None:
         self.proxmox_base_url = proxmox_base_url
-        self.user_name = user_name
-        self.user_realm = user_realm
+        self.auth_token_id = auth_token_id
         self.auth_token = auth_token
-        self.auth_token_name = auth_token_name
 
+        self.session = Session()
+        self.session.verify = False
+        self.session.headers.update({
+            "Authorization": f"PVEAPIToken={self.auth_token_id}={self.auth_token}"
+        })
 
-    @property
-    def headers(self) -> dict[str, str]:
-        return {
-            "Authorization": f"PVEAPIToken={self.user_name}@{self.user_realm}!{self.auth_token_name}={self.auth_token}"
-        }
 
     @property
     def base_url(self) -> str:
@@ -27,20 +31,14 @@ class APIClient:
             return f"{self.proxmox_base_url}/api2/json"
         return self.proxmox_base_url
 
-
-    def create_request(self, url: str, method: str = "GET", **kwargs) -> Request:
-        if not url.startswith("/"):
-            url = f"/{url}"
-        return Request(
-            url=url,
-            method=method,
-            headers=self.headers,
-            **kwargs
-        )
+    def request(self, endpoint: str, method: str = "GET", **kwargs) -> Response:
+        # Ensure endpoint starts with /
+        if not endpoint.startswith("/"):
+            endpoint = f"/{endpoint}"
+            
+        url = f"{self.base_url}{endpoint}"
+        return self.session.request(method, url, **kwargs)
 
     def is_healthy(self) -> bool:
-        req = self.create_request('/version')
-        with Session() as session:
-            prepped = session.prepare_request(req)
-            resp = session.send(prepped)
-            return resp.status_code == 200
+        resp = self.request('/version')
+        return resp.status_code == 200
