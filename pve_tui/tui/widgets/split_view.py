@@ -1,6 +1,5 @@
 from textual.app import ComposeResult
 from textual.widget import Widget
-from textual import log
 
 class SplitView(Widget):
     BINDINGS = [
@@ -12,18 +11,20 @@ class SplitView(Widget):
     SplitView {
         layout: horizontal;
         height: 100%;
+        border: solid gray;
     }
 
     .split-pane {
         width: 1fr;
         height: 100%;
-        border: solid gray;
+        padding: 1;
+        # border: solid gray;
         background: $panel;
     }
 
-    /* Highlight the pane that contains the focus */
     .split-pane:focus-within {
-        border: double green;
+        # border: green;
+        padding: 1;
         background: $surface;
     }
     '''
