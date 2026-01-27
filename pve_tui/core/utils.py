@@ -2,14 +2,18 @@ import os
 import sys
 from pathlib import Path
 
-from pve_tui.shared.models import ApplicationConfig
+from pve_tui.core.models import ApplicationConfig
 
 
 def load_config() -> ApplicationConfig:
-    config_path = get_config_dir("pve_tui")
+    # Check current directory first (Development convenience)
+    if (local_config := Path.cwd() / "config.toml").exists():
+        config_file = local_config
+    else:
+        config_path = get_config_dir("pve_tui")
 
-    if not (config_file := config_path / "config.toml").exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_file}")
+        if not (config_file := config_path / "config.toml").exists():
+            raise FileNotFoundError(f"Configuration file not found: {config_file}")
 
     config = ApplicationConfig.from_toml(config_file)
 

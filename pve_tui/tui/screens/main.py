@@ -1,14 +1,21 @@
+from typing import TYPE_CHECKING
+
 from textual.screen import Screen
 from textual.widgets import Static, ListView, ListItem, Header, Footer
 from textual.app import ComposeResult
 from textual import work
 
-from pve_tui.shared.api_client import APIClient
+if TYPE_CHECKING:
+    from pve_tui.tui.app import PveTuiApp
+
 from pve_tui.tui.widgets import SplitView
 from pve_tui.tui.widgets import ServerBrief
 
 
 class MainScreen(Screen):
+    if TYPE_CHECKING:
+        app: "PveTuiApp"
+
     CSS = """
         Screen {
             layout: vertical;
@@ -49,8 +56,7 @@ class MainScreen(Screen):
 
     @work(exclusive=True)
     async def action_refresh(self) -> None:
-        # We need to help him with typing here, because self.app is a Generic and not my instance
-        api_client: APIClient = self.app.api_client
+        cluster_service = self.app.cluster_service
 
         self.log("Refreshing server list...")
         server_list = self.query_one("#server-list", ListView)
@@ -59,13 +65,13 @@ class MainScreen(Screen):
         # but modifying UI is safe in Textual workers as they are asyncio tasks on the main loop)
         await server_list.clear()
 
-        servers_data = await api_client.get_servers_brief()
+        servers_data = await cluster_service.get_servers_brief()
 
-        self.log(await api_client.get_nodes())
+        self.log(await cluster_service.get_nodes())
 
         self.log(servers_data)
 
-        for server in servers_data:
+        for server in sorted(servers_data, key=lambda x: x.server_id):
             await server_list.append(ListItem(ServerBrief(server)))
 
         if len(server_list) > 0:

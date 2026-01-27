@@ -1,11 +1,12 @@
 from .tui import PveTuiApp
-from .shared.utils import load_config
+from .core.utils import load_config
 
+def create_app() -> PveTuiApp:
+    config = load_config()
+    return PveTuiApp(config)
 
 def main() -> int:
-    config = load_config()
-
-    app = PveTuiApp(config)
+    app = create_app()
 
     return app.run()
 

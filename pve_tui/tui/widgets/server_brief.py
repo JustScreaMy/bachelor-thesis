@@ -3,7 +3,7 @@ from textual.containers import Horizontal
 from textual.widget import Widget
 from textual.widgets import Label
 
-from pve_tui.shared import models
+from pve_tui.core import models
 
 
 GIGABYTES = 1024 * 1024 * 1024
