@@ -1,0 +1,9 @@
+[contexts.vsb]
+base_url = "https://vsb.example.com"
+token_id = "your_token"
+token = "your_secret_token"
+
+[contexts.production]
+base_url = "https://production.example.com"
+token_id = "prod_token"
+token = "prod_secret_token"

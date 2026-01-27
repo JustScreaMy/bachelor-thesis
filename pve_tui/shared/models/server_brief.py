@@ -1,9 +1,11 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
-class ServerStatus(Enum):
+
+class ServerStatus(StrEnum):
     Running = "running"
     Stopped = "stopped"
+
 
 @dataclass
 class ServerBrief:

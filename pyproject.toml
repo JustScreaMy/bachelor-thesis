@@ -17,6 +17,7 @@ pve-tui = "pve_tui.main:main"
 
 [dependency-groups]
 dev = [
+    "ipython>=9.9.0",
     "textual-dev>=1.8.0",
 ]
 
