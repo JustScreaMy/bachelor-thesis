@@ -25,7 +25,7 @@ class ApplicationConfig:
                 for name, ctx_data in data.get("contexts", {}).items()
             }
             return cls(contexts=contexts)
-        except KeyError as err:
+        except KeyError:
             raise ValueError("Invalid application configuration data")
 
 
@@ -43,5 +43,5 @@ class ContextConfig:
                 token_id=data["token_id"],
                 token=data["token"],
             )
-        except KeyError as err:
+        except KeyError:
             raise ValueError("Missing required context configuration fields")

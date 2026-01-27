@@ -1,10 +1,8 @@
-import random
-
 from textual.screen import Screen
 from textual.widgets import Static, ListView, ListItem, Header, Footer
 from textual.app import ComposeResult
+from textual import work
 
-from pve_tui.shared import models
 from pve_tui.shared.api_client import APIClient
 from pve_tui.tui.widgets import SplitView
 from pve_tui.tui.widgets import ServerBrief
@@ -49,23 +47,26 @@ class MainScreen(Screen):
         )
         yield Footer()
 
-    def action_refresh(self) -> None:
+    @work(exclusive=True)
+    async def action_refresh(self) -> None:
         # We need to help him with typing here, because self.app is a Generic and not my instance
         api_client: APIClient = self.app.api_client
 
         self.log("Refreshing server list...")
         server_list = self.query_one("#server-list", ListView)
-        server_list.clear()
 
-        servers_data = api_client.get_servers_brief()
+        # Clear on the main thread (safe since workers run in the same thread but different task,
+        # but modifying UI is safe in Textual workers as they are asyncio tasks on the main loop)
+        await server_list.clear()
 
-        self.log(api_client.get_nodes())
+        servers_data = await api_client.get_servers_brief()
+
+        self.log(await api_client.get_nodes())
 
         self.log(servers_data)
 
         for server in servers_data:
-
-            server_list.append(ListItem(ServerBrief(server)))
+            await server_list.append(ListItem(ServerBrief(server)))
 
         if len(server_list) > 0:
             server_list.index = 0

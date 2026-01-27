@@ -1,52 +1,48 @@
+import asyncio
 from typing import Self
 
-import urllib3
-from requests import Session, Response
-from urllib3.exceptions import SecurityWarning
+import aiohttp
 
 from pve_tui.shared import models
-
-# Most of Proxmox VE instances use self-signed certificates, so we disable warnings here.
-urllib3.disable_warnings(SecurityWarning)
 
 
 class APIClient:
     proxmox_base_url: str
-
     auth_token_id: str
     auth_token: str
-    session: Session
+    _session: aiohttp.ClientSession | None
 
     def __init__(
-            self, proxmox_base_url: str, auth_token_id: str, auth_token: str
+        self, proxmox_base_url: str, auth_token_id: str, auth_token: str
     ) -> None:
         self.proxmox_base_url = proxmox_base_url
         self.auth_token_id = auth_token_id
         self.auth_token = auth_token
-
-        self.session = Session()
-        self.session.verify = False
-        self.session.headers.update(
-            {"Authorization": f"PVEAPIToken={self.auth_token_id}={self.auth_token}"}
-        )
+        self._session = None
 
     @classmethod
-    def from_config(cls, application_config: models.ApplicationConfig, context: str = "") -> Self:
+    def from_config(
+        cls, application_config: models.ApplicationConfig, context: str = ""
+    ) -> Self:
         """Creates APIClient from ApplicationConfig. If no context is provided, the alphabetically first one is used."""
         if context:
             try:
                 server_config = application_config.contexts[context]
             except KeyError:
-                raise ValueError(f"Context '{context}' not found in application configuration.")
+                raise ValueError(
+                    f"Context '{context}' not found in application configuration."
+                )
         else:
             first_context = ""
             try:
                 first_context = sorted(application_config.contexts.keys()).pop(0)
                 server_config = application_config.contexts[first_context]
-            except IndexError as ex:
+            except IndexError:
                 raise ValueError("No contexts found in application configuration.")
-            except KeyError as ex:
-                raise ValueError(f"Context '{first_context}' not found in application configuration.")
+            except KeyError:
+                raise ValueError(
+                    f"Context '{first_context}' not found in application configuration."
+                )
 
         return cls(
             proxmox_base_url=server_config.base_url,
@@ -60,38 +56,73 @@ class APIClient:
             return f"{self.proxmox_base_url}/api2/json"
         return self.proxmox_base_url
 
-    def request(self, endpoint: str, method: str = "GET", **kwargs) -> Response:
-        # Ensure endpoint starts with /
+    async def get_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            connector = aiohttp.TCPConnector(ssl=False)
+            headers = {
+                "Authorization": f"PVEAPIToken={self.auth_token_id}={self.auth_token}"
+            }
+            self._session = aiohttp.ClientSession(connector=connector, headers=headers)
+        return self._session
+
+    async def close(self) -> None:
+        if self._session and not self._session.closed:
+            await self._session.close()
+
+    async def request(
+        self, endpoint: str, method: str = "GET", **kwargs
+    ) -> aiohttp.ClientResponse:
         if not endpoint.startswith("/"):
             endpoint = f"/{endpoint}"
 
         url = f"{self.base_url}{endpoint}"
-        return self.session.request(method, url, **kwargs)
+        session = await self.get_session()
+        return await session.request(method, url, **kwargs)
 
-    def is_healthy(self) -> bool:
-        resp = self.request("/version")
-        return resp.status_code == 200
+    async def is_healthy(self) -> bool:
+        try:
+            async with await self.request("/version") as resp:
+                return resp.status == 200
+        except Exception:
+            return False
 
-    def get_nodes(self) -> list[str]:
-        response = self.request("/nodes")
+    async def get_nodes(self) -> list[str]:
+        async with await self.request("/nodes") as response:
+            response.raise_for_status()
+            data = await response.json()
+            nodes = [node["node"] for node in data.get("data", [])]
+            return nodes
 
-        data = response.json()
-        nodes = [node["node"] for node in data.get("data", [])]
-
-        return nodes
-
-    def get_servers_brief(self) -> list[models.ServerBrief]:
+    async def get_servers_brief(self) -> list[models.ServerBrief]:
+        nodes = await self.get_nodes()
         servers = []
-        for node in self.get_nodes():
-            res = self.request(f"/nodes/{node}/qemu")
-            data = res.json()
 
-            for server in data.get("data", []):
+        async def fetch_node_vms(node_name: str) -> list[dict]:
+            async with await self.request(f"/nodes/{node_name}/qemu") as res:
+                res.raise_for_status()
+                data = await res.json()
+                return data.get("data", [])
+
+        results = await asyncio.gather(
+            *(fetch_node_vms(node) for node in nodes), return_exceptions=True
+        )
+
+        for result in results:
+            if isinstance(result, Exception):
+                continue
+
+            for server in result:
+                status_value = server.get("status", "stopped")
+                try:
+                    status = models.ServerStatus(status_value)
+                except ValueError:
+                    status = models.ServerStatus.Stopped
+
                 servers.append(
                     models.ServerBrief(
                         server_id=server.get("vmid", 0),
                         name=server.get("name", ""),
-                        status=models.ServerStatus(server.get("status", "stopped")),
+                        status=status,
                         cpus=server.get("cpus", 0),
                         cpu_usage=server.get("cpu", 0),
                         memory=server.get("maxmem", 0),

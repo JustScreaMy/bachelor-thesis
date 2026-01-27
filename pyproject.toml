@@ -7,7 +7,7 @@ name = "pve_tui"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
-    "requests>=2.32.5",
+    "aiohttp>=3.13.2",
     "textual>=7.4.0",
 ]
 

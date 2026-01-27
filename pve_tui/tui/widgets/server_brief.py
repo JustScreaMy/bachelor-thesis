@@ -8,6 +8,7 @@ from pve_tui.shared import models
 
 GIGABYTES = 1024 * 1024 * 1024
 
+
 class ServerBrief(Widget):
     DEFAULT_CSS = """
         ServerBrief {
@@ -77,7 +78,7 @@ class ServerBrief(Widget):
 
         if self.server_info.status == models.ServerStatus.Running:
             metrics_text = (
-                f"CPU: {self.server_info.cpu_usage*100:.2f}% ({self.server_info.cpus}c) | "
+                f"CPU: {self.server_info.cpu_usage * 100:.2f}% ({self.server_info.cpus}c) | "
                 f"Mem: {int(self.server_info.memory_used / GIGABYTES)}G/{int(self.server_info.memory / GIGABYTES)}G"
             )
             yield Label(metrics_text, classes="metrics")
