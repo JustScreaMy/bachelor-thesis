@@ -5,7 +5,14 @@ from .api import ProxmoxClient
 
 
 class ClusterService:
-    """Service for interacting with Proxmox VE cluster-related API endpoints."""
+    """
+    Service for interacting with Proxmox VE cluster-related API endpoints.
+
+    Attributes:
+        client (ProxmoxClient): The ProxmoxClient instance for making API requests.
+    """
+
+    client: ProxmoxClient
 
     def __init__(self, client: ProxmoxClient):
         self.client = client
