@@ -69,7 +69,10 @@ class ServerBrief(Widget):
 
         yield Horizontal(
             Label(f'{self.server_info.name}', classes='server-name'),
-            Label(f' #{self.server_info.server_id}', classes='server-id'),
+            Label(
+                f' {self.server_info.type.value}#{self.server_info.server_id}',
+                classes='server-id',
+            ),
             Label(
                 f' {status_icon} {self.server_info.status.value}',
                 classes=f'server-status {status_class}',
@@ -85,3 +88,38 @@ class ServerBrief(Widget):
             yield Label(metrics_text, classes='metrics')
         else:
             yield Label('Offline', classes='metrics')
+
+    def update(self, server_info: models.ServerBrief) -> None:
+        """Update the widget with new server information."""
+        self.server_info = server_info
+
+        # Update name and ID
+        self.query_one('.server-name', Label).update(f'{self.server_info.name}')
+        self.query_one('.server-id', Label).update(
+            f' {server_info.type.value}#{self.server_info.server_id}',
+        )
+
+        # Update status
+        status_class = (
+            'status-running'
+            if self.server_info.status == models.ServerStatus.Running
+            else 'status-stopped'
+        )
+        status_icon = (
+            '●' if self.server_info.status == models.ServerStatus.Running else '○'
+        )
+
+        status_label = self.query_one('.server-status', Label)
+        status_label.classes = f'server-status {status_class}'
+        status_label.update(f' {status_icon} {self.server_info.status.value}')
+
+        # Update metrics
+        metrics_label = self.query_one('.metrics', Label)
+        if self.server_info.status == models.ServerStatus.Running:
+            metrics_text = (
+                f'CPU: {self.server_info.cpu_usage * 100:.2f}% ({self.server_info.cpus}c) | '
+                f'Mem: {int(self.server_info.memory_used / consts.GIGABYTES)}G/{int(self.server_info.memory / consts.GIGABYTES)}G'
+            )
+            metrics_label.update(metrics_text)
+        else:
+            metrics_label.update('Offline')

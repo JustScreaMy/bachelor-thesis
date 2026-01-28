@@ -26,26 +26,38 @@ class ClusterService:
             return nodes
 
     async def get_servers_brief(self) -> list[models.ServerBrief]:
-        """Fetches a brief overview of all servers (VMs) in the cluster."""
+        """Fetches a brief overview of all servers (VMs and LXCs) in the cluster."""
         nodes = await self.get_nodes()
         servers = []
 
-        async def fetch_node_vms(node_name: str) -> list[dict]:
+        async def fetch_node_qemu(
+            node_name: str,
+        ) -> list[tuple[dict, models.ServerType]]:
             async with self.client.request(f'/nodes/{node_name}/qemu') as res:
                 res.raise_for_status()
                 data = await res.json()
-                return data.get('data', [])
+                return [(item, models.ServerType.VM) for item in data.get('data', [])]
 
-        results = await asyncio.gather(
-            *(fetch_node_vms(node) for node in nodes),
-            return_exceptions=True,
-        )
+        async def fetch_node_lxc(
+            node_name: str,
+        ) -> list[tuple[dict, models.ServerType]]:
+            async with self.client.request(f'/nodes/{node_name}/lxc') as res:
+                res.raise_for_status()
+                data = await res.json()
+                return [(item, models.ServerType.LXC) for item in data.get('data', [])]
+
+        tasks = []
+        for node in nodes:
+            tasks.append(fetch_node_qemu(node))
+            tasks.append(fetch_node_lxc(node))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for result in results:
             if isinstance(result, Exception):
                 continue
 
-            for server in result:
+            for server, server_type in result:
                 status_value = server.get('status', 'stopped')
                 try:
                     status = models.ServerStatus(status_value)
@@ -56,6 +68,7 @@ class ClusterService:
                     models.ServerBrief(
                         server_id=server.get('vmid', 0),
                         name=server.get('name', ''),
+                        type=server_type,
                         status=status,
                         cpus=server.get('cpus', 0),
                         cpu_usage=server.get('cpu', 0),

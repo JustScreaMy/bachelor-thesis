@@ -15,6 +15,19 @@ class ServerStatus(StrEnum):
     Stopped = 'stopped'
 
 
+class ServerType(StrEnum):
+    """
+    Enum representing the type of a server.
+
+    Attributes:
+        VM (str): Virtual Machine (QEMU).
+        LXC (str): Linux Container.
+    """
+
+    VM = 'VM'
+    LXC = 'LXC'
+
+
 @dataclass
 class ServerBrief:
     """
@@ -23,6 +36,7 @@ class ServerBrief:
     Attributes:
         server_id (int): Unique identifier for the server - represents VMID in Proxmox.
         name (str): Name of the server.
+        type (ServerType): Type of the server (VM or LXC).
         status (ServerStatus): Current status of the server.
         cpus (int): Number of CPUs allocated to the server.
         cpu_usage (int): Current CPU usage percentage.
@@ -33,6 +47,7 @@ class ServerBrief:
 
     server_id: int
     name: str
+    type: ServerType
     status: ServerStatus
 
     cpus: int
