@@ -3,13 +3,13 @@ from textual.containers import Horizontal
 from textual.widget import Widget
 from textual.widgets import Label
 
+from pve_tui.core import consts
 from pve_tui.core import models
 
 
-GIGABYTES = 1024 * 1024 * 1024
-
-
 class ServerBrief(Widget):
+    """A brief overview widget for a Proxmox VE server."""
+
     DEFAULT_CSS = """
         ServerBrief {
             height: auto;
@@ -52,6 +52,7 @@ class ServerBrief(Widget):
     """
 
     def __init__(self, server_info: models.ServerBrief, **kwargs) -> None:
+        """Initialize the ServerBrief widget."""
         super().__init__(**kwargs)
         self.server_info = server_info
 
@@ -79,7 +80,7 @@ class ServerBrief(Widget):
         if self.server_info.status == models.ServerStatus.Running:
             metrics_text = (
                 f'CPU: {self.server_info.cpu_usage * 100:.2f}% ({self.server_info.cpus}c) | '
-                f'Mem: {int(self.server_info.memory_used / GIGABYTES)}G/{int(self.server_info.memory / GIGABYTES)}G'
+                f'Mem: {int(self.server_info.memory_used / consts.GIGABYTES)}G/{int(self.server_info.memory / consts.GIGABYTES)}G'
             )
             yield Label(metrics_text, classes='metrics')
         else:

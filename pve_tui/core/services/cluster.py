@@ -5,10 +5,13 @@ from .api import ProxmoxClient
 
 
 class ClusterService:
+    """Service for interacting with Proxmox VE cluster-related API endpoints."""
+
     def __init__(self, client: ProxmoxClient):
         self.client = client
 
     async def get_nodes(self) -> list[str]:
+        """Fetches the list of nodes in the Proxmox VE cluster."""
         async with self.client.request('/nodes') as response:
             response.raise_for_status()
             data = await response.json()
@@ -16,6 +19,7 @@ class ClusterService:
             return nodes
 
     async def get_servers_brief(self) -> list[models.ServerBrief]:
+        """Fetches a brief overview of all servers (VMs) in the cluster."""
         nodes = await self.get_nodes()
         servers = []
 

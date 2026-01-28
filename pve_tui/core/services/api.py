@@ -9,6 +9,16 @@ from .. import models
 
 
 class ProxmoxClient:
+    """
+    Asynchronous client for interacting with the Proxmox VE API.
+
+    Attributes:
+        proxmox_base_url (str): The base URL of the Proxmox VE server.
+        auth_token_id (str): The authentication token ID for API access.
+        auth_token (str): The authentication token for API access.
+        _session (aiohttp.ClientSession | None): The underlying HTTP session.
+    """
+
     proxmox_base_url: str
     auth_token_id: str
     auth_token: str
@@ -39,7 +49,6 @@ class ProxmoxClient:
                 raise ValueError(f"Context '{context}' not found.")
         else:
             try:
-                # Get the first context alphabetically
                 first_context = sorted(application_config.contexts.keys()).pop(0)
                 server_config = application_config.contexts[first_context]
             except (IndexError, KeyError):
@@ -53,6 +62,7 @@ class ProxmoxClient:
 
     @property
     def base_url(self) -> str:
+        """Returns the full base URL for the Proxmox VE API."""
         if not self.proxmox_base_url.endswith('/api2/json'):
             return f'{self.proxmox_base_url}/api2/json'
         return self.proxmox_base_url
@@ -82,6 +92,8 @@ class ProxmoxClient:
         method: str = 'GET',
         **kwargs,
     ) -> AsyncContextManager[aiohttp.ClientResponse]:
+        """Creates an asynchronous context manager for making API requests."""
+
         @asynccontextmanager
         async def _request() -> AsyncIterator[aiohttp.ClientResponse]:
             if not endpoint.startswith('/'):
@@ -106,6 +118,7 @@ class ProxmoxClient:
         return _request()
 
     async def is_healthy(self) -> bool:
+        """Checks if the Proxmox VE API is reachable and healthy."""
         try:
             async with self.request('/version') as resp:
                 return resp.status == 200

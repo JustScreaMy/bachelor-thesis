@@ -7,6 +7,13 @@ from typing import Self
 
 @dataclass
 class ApplicationConfig:
+    """
+    Application configuration containing multiple contexts.
+
+    Attributes:
+        contexts (dict[str, ContextConfig]): A dictionary mapping context names to their configurations.
+    """
+
     contexts: dict[str, ContextConfig]
 
     @classmethod
@@ -32,6 +39,15 @@ class ApplicationConfig:
 
 @dataclass(frozen=True)
 class ContextConfig:
+    """
+    Configuration for a specific context/environment.
+
+    Attributes:
+        base_url (str): The base URL of the Proxmox VE API.
+        token_id (str): The token ID for authentication.
+        token (str): The token secret for authentication.
+    """
+
     base_url: str
     token_id: str
     token: str

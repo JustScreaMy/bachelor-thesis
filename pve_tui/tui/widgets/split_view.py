@@ -3,6 +3,8 @@ from textual.widget import Widget
 
 
 class SplitView(Widget):
+    """A split view widget with a left sidebar and right main area with configurable width."""
+
     BINDINGS = [
         ('tab', 'focus_next_pane', 'Focus Next Pane'),
         ('shift+tab', 'focus_previous_pane', 'Focus Previous Pane'),
@@ -42,6 +44,7 @@ class SplitView(Widget):
         sidebar_width: str | int | float = '30%',
         **kwargs,
     ) -> None:
+        """Initialize the SplitView with left and right panes and sidebar width."""
         super().__init__(**kwargs)
         self.left = left
         self.right = right
