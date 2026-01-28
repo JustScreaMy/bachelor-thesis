@@ -1,9 +1,13 @@
 from typing import TYPE_CHECKING
 
-from textual.screen import Screen
-from textual.widgets import Static, ListView, ListItem, Header, Footer
-from textual.app import ComposeResult
 from textual import work
+from textual.app import ComposeResult
+from textual.screen import Screen
+from textual.widgets import Footer
+from textual.widgets import Header
+from textual.widgets import ListItem
+from textual.widgets import ListView
+from textual.widgets import Static
 
 if TYPE_CHECKING:
     from pve_tui.tui.app import PveTuiApp
@@ -14,7 +18,7 @@ from pve_tui.tui.widgets import ServerBrief
 
 class MainScreen(Screen):
     if TYPE_CHECKING:
-        app: "PveTuiApp"
+        app: 'PveTuiApp'
 
     CSS = """
         Screen {
@@ -38,8 +42,8 @@ class MainScreen(Screen):
     """
 
     BINDINGS = [
-        ("r", "refresh", "Refresh Server List"),
-        ("q", "quit", "Quit"),
+        ('r', 'refresh', 'Refresh Server List'),
+        ('q', 'quit', 'Quit'),
     ]
 
     def action_quit(self) -> None:
@@ -48,8 +52,8 @@ class MainScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield SplitView(
-            left=ListView(id="server-list"),
-            right=Static("Select a server to view details", id="details-view"),
+            left=ListView(id='server-list'),
+            right=Static('Select a server to view details', id='details-view'),
             sidebar_width=1 / 3,
         )
         yield Footer()
@@ -58,8 +62,8 @@ class MainScreen(Screen):
     async def action_refresh(self) -> None:
         cluster_service = self.app.cluster_service
 
-        self.log("Refreshing server list...")
-        server_list = self.query_one("#server-list", ListView)
+        self.log('Refreshing server list...')
+        server_list = self.query_one('#server-list', ListView)
 
         # Clear on the main thread (safe since workers run in the same thread but different task,
         # but modifying UI is safe in Textual workers as they are asyncio tasks on the main loop)
@@ -77,7 +81,7 @@ class MainScreen(Screen):
         if len(server_list) > 0:
             server_list.index = 0
 
-        self.log("Refreshing server list finished")
+        self.log('Refreshing server list finished')
 
     def on_mount(self) -> None:
         self.action_refresh()

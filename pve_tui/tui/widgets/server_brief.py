@@ -58,29 +58,29 @@ class ServerBrief(Widget):
     def compose(self) -> ComposeResult:
         # Determine status class
         status_class = (
-            "status-running"
+            'status-running'
             if self.server_info.status == models.ServerStatus.Running
-            else "status-stopped"
+            else 'status-stopped'
         )
         status_icon = (
-            "●" if self.server_info.status == models.ServerStatus.Running else "○"
+            '●' if self.server_info.status == models.ServerStatus.Running else '○'
         )
 
         yield Horizontal(
-            Label(f"{self.server_info.name}", classes="server-name"),
-            Label(f" #{self.server_info.server_id}", classes="server-id"),
+            Label(f'{self.server_info.name}', classes='server-name'),
+            Label(f' #{self.server_info.server_id}', classes='server-id'),
             Label(
-                f" {status_icon} {self.server_info.status.value}",
-                classes=f"server-status {status_class}",
+                f' {status_icon} {self.server_info.status.value}',
+                classes=f'server-status {status_class}',
             ),
-            classes="server-header",
+            classes='server-header',
         )
 
         if self.server_info.status == models.ServerStatus.Running:
             metrics_text = (
-                f"CPU: {self.server_info.cpu_usage * 100:.2f}% ({self.server_info.cpus}c) | "
-                f"Mem: {int(self.server_info.memory_used / GIGABYTES)}G/{int(self.server_info.memory / GIGABYTES)}G"
+                f'CPU: {self.server_info.cpu_usage * 100:.2f}% ({self.server_info.cpus}c) | '
+                f'Mem: {int(self.server_info.memory_used / GIGABYTES)}G/{int(self.server_info.memory / GIGABYTES)}G'
             )
-            yield Label(metrics_text, classes="metrics")
+            yield Label(metrics_text, classes='metrics')
         else:
-            yield Label("Offline", classes="metrics")
+            yield Label('Offline', classes='metrics')

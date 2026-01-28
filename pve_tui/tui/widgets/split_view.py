@@ -4,8 +4,8 @@ from textual.widget import Widget
 
 class SplitView(Widget):
     BINDINGS = [
-        ("tab", "focus_next_pane", "Focus Next Pane"),
-        ("shift+tab", "focus_previous_pane", "Focus Previous Pane"),
+        ('tab', 'focus_next_pane', 'Focus Next Pane'),
+        ('shift+tab', 'focus_previous_pane', 'Focus Previous Pane'),
     ]
 
     DEFAULT_CSS = """
@@ -39,7 +39,7 @@ class SplitView(Widget):
         self,
         left: Widget,
         right: Widget,
-        sidebar_width: str | int | float = "30%",
+        sidebar_width: str | int | float = '30%',
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -49,12 +49,12 @@ class SplitView(Widget):
         self.left.can_focus = True
         self.right.can_focus = True
 
-        self.left.add_class("split-pane")
-        self.right.add_class("split-pane")
+        self.left.add_class('split-pane')
+        self.right.add_class('split-pane')
 
         # Handle float as percentage (e.g. 0.25 -> "25%")
         if isinstance(sidebar_width, float) and 0 < sidebar_width < 1:
-            self.left.styles.width = f"{sidebar_width * 100:.1f}%"
+            self.left.styles.width = f'{sidebar_width * 100:.1f}%'
         else:
             self.left.styles.width = sidebar_width
 

@@ -1,17 +1,17 @@
 from textual.app import App
 
-from .screens import MainScreen
 from ..core import models
 from ..core.services.api import ProxmoxClient
 from ..core.services.cluster import ClusterService
+from .screens import MainScreen
 
 
 class PveTuiApp(App):
     """Main application class for the Proxmox VE TUI."""
 
-    MODES = {"default": "main"}
+    MODES = {'default': 'main'}
 
-    SCREENS = {"main": MainScreen}
+    SCREENS = {'main': MainScreen}
 
     application_config: models.ApplicationConfig
     client: ProxmoxClient
@@ -25,10 +25,10 @@ class PveTuiApp(App):
         self.cluster_service = ClusterService(self.client)
 
     async def on_mount(self) -> None:
-        self.log("ProxmoxClient health: %s", await self.client.is_healthy())
-        await self.switch_mode("default")
+        self.log('ProxmoxClient health: %s', await self.client.is_healthy())
+        await self.switch_mode('default')
 
     async def on_unmount(self) -> None:
-        self.log("Closing Proxmox client session...")
+        self.log('Closing Proxmox client session...')
         await self.client.close()
-        self.log("Session closed.")
+        self.log('Session closed.')

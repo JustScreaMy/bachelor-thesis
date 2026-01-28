@@ -7,13 +7,13 @@ from pve_tui.core.models import ApplicationConfig
 
 def load_config() -> ApplicationConfig:
     # Check current directory first (Development convenience)
-    if (local_config := Path.cwd() / "config.toml").exists():
+    if (local_config := Path.cwd() / 'config.toml').exists():
         config_file = local_config
     else:
-        config_path = get_config_dir("pve_tui")
+        config_path = get_config_dir('pve_tui')
 
-        if not (config_file := config_path / "config.toml").exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_file}")
+        if not (config_file := config_path / 'config.toml').exists():
+            raise FileNotFoundError(f'Configuration file not found: {config_file}')
 
     config = ApplicationConfig.from_toml(config_file)
 
@@ -21,12 +21,12 @@ def load_config() -> ApplicationConfig:
 
 
 def get_config_dir(subdir_name: str) -> Path:
-    if sys.platform.startswith("win"):
-        folder = os.environ.get("APPDATA", Path.home())
+    if sys.platform.startswith('win'):
+        folder = os.environ.get('APPDATA', Path.home())
         return Path(folder) / subdir_name
 
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / subdir_name
+    if sys.platform == 'darwin':
+        return Path.home() / 'Library' / 'Application Support' / subdir_name
 
-    folder = os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
+    folder = os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')
     return Path(folder) / subdir_name

@@ -3,8 +3,8 @@ from enum import StrEnum
 
 
 class ServerStatus(StrEnum):
-    Running = "running"
-    Stopped = "stopped"
+    Running = 'running'
+    Stopped = 'stopped'
 
 
 @dataclass
