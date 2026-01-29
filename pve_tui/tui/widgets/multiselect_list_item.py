@@ -1,5 +1,6 @@
 from textual import events
 from textual import on
+from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
 
@@ -20,10 +21,19 @@ class MultiselectListItem(Widget, can_focus=False):
     highlighted = reactive(False)
     selected = reactive(False)
 
+    class Selected(Message):
+        """Posted when a `MultiselectListItem` is selected or deselected."""
+
+        def __init__(self, item: MultiselectListItem) -> None:
+            super().__init__()
+            self.item = item
+
     @on(events.Click)
     def _on_click(self, event: events.Click) -> None:
         self.log('Clicked on MultiselectListItem')
         self.selected = not self.selected
+
+        self.post_message(self.Selected(self))
 
     def watch_selected(self, value: bool) -> None:
         self.set_class(value, '-selected')

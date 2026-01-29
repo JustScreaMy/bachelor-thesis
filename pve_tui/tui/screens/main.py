@@ -1,6 +1,7 @@
 from typing import ClassVar
 from typing import TYPE_CHECKING
 
+from textual import on
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -37,7 +38,7 @@ class MainScreen(Screen):
         }
 
 
-        #details-view {
+        #actions-view {
             padding: 2;
             content-align: center middle;
             text-style: italic;
@@ -57,8 +58,12 @@ class MainScreen(Screen):
         yield Header(show_clock=True)
         yield SplitView(
             left=MultiselectListView(id='server-list'),
-            right=Static('Select a server to view details', id='details-view'),
+            right=Static(
+                'Select a server/servers to view possible actions',
+                id='actions-view',
+            ),
             sidebar_width=1 / 3,
+            id='split-view',
         )
         yield Footer()
 
@@ -134,6 +139,28 @@ class MainScreen(Screen):
             server_list.index = 0
 
         self.log('Refreshing server list finished')
+
+    @on(MultiselectListItem.Selected)
+    async def on_multiselect_list_item_selected(
+        self,
+        event: MultiselectListItem.Selected,
+    ) -> None:
+        details_view = self.query_one('#actions-view', Static)
+        list_view = self.query_one('#server-list', MultiselectListView)
+
+        if not list_view.selected_children:
+            details_view.update('Select a server/servers to view possible actions')
+        else:
+            # List all selected server ids
+            selected_server_names = [
+                item.query_one(ServerBrief).server_info.name
+                for item in list_view.selected_children
+            ]
+            details_view.update(
+                f'Selected server IDs:\n{"\n".join(selected_server_names)}',
+            )
+
+        event.stop()
 
     def on_mount(self) -> None:
         self.action_refresh()

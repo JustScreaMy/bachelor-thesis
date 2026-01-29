@@ -72,7 +72,7 @@ class MultiselectListView(VerticalScroll, can_focus=True, can_focus_children=Fal
     """
 
     BINDINGS: ClassVar[list[BindingType]] = [
-        Binding('space', 'select_cursor', 'Select', show=False),
+        Binding('space', 'select_cursor', 'Select server'),
         Binding('up', 'cursor_up', 'Cursor up', show=False),
         Binding('down', 'cursor_down', 'Cursor down', show=False),
     ]
@@ -397,6 +397,7 @@ class MultiselectListView(VerticalScroll, can_focus=True, can_focus_children=Fal
             return
 
         selected_child.selected = not selected_child.selected
+        selected_child.post_message(MultiselectListItem.Selected(selected_child))
 
     def action_cursor_down(self) -> None:
         """Highlight the next item in the list."""
