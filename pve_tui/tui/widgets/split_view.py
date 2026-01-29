@@ -1,13 +1,17 @@
+from typing import ClassVar
+
 from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.binding import BindingType
 from textual.widget import Widget
 
 
 class SplitView(Widget):
     """A split view widget with a left sidebar and right main area with configurable width."""
 
-    BINDINGS = [
-        ('tab', 'focus_next_pane', 'Focus Next Pane'),
-        ('shift+tab', 'focus_previous_pane', 'Focus Previous Pane'),
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding('tab', 'focus_next_pane', 'Focus Next Pane'),
+        Binding('shift+tab', 'focus_previous_pane', 'Focus Previous Pane'),
     ]
 
     DEFAULT_CSS = """

@@ -1,7 +1,10 @@
+from typing import ClassVar
 from typing import TYPE_CHECKING
 
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.binding import BindingType
 from textual.screen import Screen
 from textual.widgets import Footer
 from textual.widgets import Header
@@ -42,9 +45,9 @@ class MainScreen(Screen):
         }
     """
 
-    BINDINGS = [
-        ('r', 'refresh', 'Refresh Server List'),
-        ('q', 'quit', 'Quit'),
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding('r', 'refresh', 'Refresh Server List'),
+        Binding('q', 'quit', 'Quit'),
     ]
 
     def action_quit(self) -> None:
