@@ -24,8 +24,8 @@ class ServerType(StrEnum):
         LXC (str): Linux Container.
     """
 
-    VM = 'VM'
-    LXC = 'LXC'
+    VM = 'vm'
+    LXC = 'lxc'
 
 
 @dataclass
@@ -36,6 +36,7 @@ class ServerBrief:
     Attributes:
         server_id (int): Unique identifier for the server - represents VMID in Proxmox.
         name (str): Name of the server.
+        node (str): Name of the node where the server is located.
         type (ServerType): Type of the server (VM or LXC).
         status (ServerStatus): Current status of the server.
         cpus (int): Number of CPUs allocated to the server.
@@ -47,6 +48,7 @@ class ServerBrief:
 
     server_id: int
     name: str
+    node: str
     type: ServerType
     status: ServerStatus
 

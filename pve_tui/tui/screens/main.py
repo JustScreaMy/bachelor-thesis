@@ -9,13 +9,14 @@ from textual.binding import BindingType
 from textual.screen import Screen
 from textual.widgets import Footer
 from textual.widgets import Header
-from textual.widgets import Static
 
+from pve_tui.core import models
+from pve_tui.tui.widgets.server_action_list import ServerActionList
 
 if TYPE_CHECKING:
     from pve_tui.tui.app import PveTuiApp
 
-from pve_tui.tui.widgets import MultiselectListView
+from pve_tui.tui.widgets import MultiselectListView, ServerDetailView
 from pve_tui.tui.widgets import MultiselectListItem
 from pve_tui.tui.widgets import SplitView
 from pve_tui.tui.widgets import ServerBrief
@@ -36,14 +37,6 @@ class MainScreen(Screen):
             background: $surface;
             padding: 0 1;
         }
-
-
-        #actions-view {
-            padding: 2;
-            content-align: center middle;
-            text-style: italic;
-            color: $text-muted;
-        }
     """
 
     BINDINGS: ClassVar[list[BindingType]] = [
@@ -58,10 +51,7 @@ class MainScreen(Screen):
         yield Header(show_clock=True)
         yield SplitView(
             left=MultiselectListView(id='server-list'),
-            right=Static(
-                'Select a server/servers to view possible actions',
-                id='actions-view',
-            ),
+            right=ServerActionList([]),
             sidebar_width=1 / 3,
             id='split-view',
         )
@@ -74,7 +64,7 @@ class MainScreen(Screen):
         self.log('Refreshing server list...')
         server_list = self.query_one('#server-list', MultiselectListView)
 
-        servers_data = await cluster_service.get_servers_brief()
+        servers_data = await cluster_service.fetch_servers_brief()
         # Sort data to match expected display order
         servers_data.sort(key=lambda x: x.server_id)
 
@@ -140,27 +130,59 @@ class MainScreen(Screen):
 
         self.log('Refreshing server list finished')
 
+    @on(MultiselectListView.Highlighted)
+    def _handle_highlighted(self, message: MultiselectListView.Highlighted) -> None:
+        """Handle when a server item is highlighted."""
+        server_list = self.query_one('#server-list', MultiselectListView)
+
+        # Only update if no servers are selected
+        if len(server_list.selected_children) == 0 and message.item is not None:
+            server_brief = message.item.query_one(ServerBrief).server_info
+            split_view = self.query_one('#split-view', SplitView)
+            self._fetch_and_display_server_details(server_brief, split_view)
+
     @on(MultiselectListItem.Selected)
-    async def on_multiselect_list_item_selected(
-        self,
-        event: MultiselectListItem.Selected,
-    ) -> None:
-        details_view = self.query_one('#actions-view', Static)
-        list_view = self.query_one('#server-list', MultiselectListView)
+    def _handle_selected(self, _message: MultiselectListItem.Selected) -> None:
+        """Handle when a server item is selected/deselected."""
+        server_list = self.query_one('#server-list', MultiselectListView)
+        split_view = self.query_one('#split-view', SplitView)
+        selected_children = server_list.selected_children
 
-        if not list_view.selected_children:
-            details_view.update('Select a server/servers to view possible actions')
-        else:
-            # List all selected server ids
-            selected_server_names = [
-                item.query_one(ServerBrief).server_info.name
-                for item in list_view.selected_children
+        if selected_children:
+            selected_servers = [
+                child.query_one(ServerBrief).server_info for child in selected_children
             ]
-            details_view.update(
-                f'Selected server IDs:\n{"\n".join(selected_server_names)}',
-            )
+            split_view.set_right_pane(ServerActionList(selected_servers))
+        else:
+            highlighted_item = server_list.highlighted_child
+            if highlighted_item is not None:
+                server_brief = highlighted_item.query_one(ServerBrief).server_info
+                self._fetch_and_display_server_details(server_brief, split_view)
 
-        event.stop()
+    @work(exclusive=True)
+    async def _fetch_and_display_server_details(
+        self,
+        server_brief: models.ServerBrief,
+        split_view: SplitView,
+    ) -> None:
+        """Fetch full server details and display them in the detail view."""
+        cluster_service = self.app.cluster_service
+
+        try:
+            if server_brief.type == models.ServerType.VM:
+                server_details = await cluster_service.fetch_server_details_qemu(
+                    server_brief.node,
+                    server_brief.server_id,
+                )
+            else:  # LXC
+                server_details = await cluster_service.fetch_server_details_lxc(
+                    server_brief.node,
+                    server_brief.server_id,
+                )
+
+            split_view.set_right_pane(ServerDetailView(server_details))
+        except Exception as e:
+            self.log(f'Error fetching server details: {e}')
 
     def on_mount(self) -> None:
         self.action_refresh()

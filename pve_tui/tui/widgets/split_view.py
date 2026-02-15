@@ -65,6 +65,30 @@ class SplitView(Widget):
         else:
             self.left.styles.width = sidebar_width
 
+    def set_left_pane(self, widget: Widget) -> None:
+        """Set the left pane widget."""
+        old_left = self.left
+        sidebar_width = old_left.styles.width
+
+        widget.can_focus = True
+        widget.add_class('split-pane')
+        widget.styles.width = sidebar_width
+
+        self.left = widget
+        self.mount(widget, before=self.right)
+        old_left.remove()
+
+    def set_right_pane(self, widget: Widget) -> None:
+        """Set the right pane widget."""
+        old_right = self.right
+
+        widget.can_focus = True
+        widget.add_class('split-pane')
+
+        self.right = widget
+        self.mount(widget)
+        old_right.remove()
+
     def compose(self) -> ComposeResult:
         yield self.left
         yield self.right
