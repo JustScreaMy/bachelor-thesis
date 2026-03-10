@@ -151,12 +151,12 @@ class QEMUDetailView(BaseDetailView):
         yield from self._yield_boot_config(self.server.on_boot)
 
 
-class ServerDetailView(Widget):
+class ServerDetailView(VerticalScroll):
     """A widget to display detailed information about a server."""
 
     DEFAULT_CSS = """
     ServerDetailView {
-        padding: 2;
+        height: 100%;
     }
 
     .server-detail {
@@ -169,10 +169,9 @@ class ServerDetailView(Widget):
         self.server = server
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll():  # TODO: fix vertical scroll not working
-            if isinstance(self.server, models.ServerLXC):
-                yield LXCDetailView(self.server)
-            elif isinstance(self.server, models.ServerQEMU):
-                yield QEMUDetailView(self.server)
-            else:
-                yield Static('Unknown server type', classes='server-detail')
+        if isinstance(self.server, models.ServerLXC):
+            yield LXCDetailView(self.server)
+        elif isinstance(self.server, models.ServerQEMU):
+            yield QEMUDetailView(self.server)
+        else:
+            yield Static('Unknown server type', classes='server-detail')
