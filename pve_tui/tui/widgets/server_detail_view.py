@@ -1,6 +1,5 @@
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
-from textual.widget import Widget
 from textual.widgets import Label
 from textual.widgets import Static
 
@@ -33,7 +32,7 @@ SHARED_CSS = """
 """
 
 
-class BaseDetailView(Widget):
+class BaseDetailView:
     """Base class for server detail views with shared functionality."""
 
     @staticmethod
@@ -79,89 +78,19 @@ class BaseDetailView(Widget):
         return f'{days}d {hours}h {minutes}m'
 
 
-class LXCDetailView(BaseDetailView):
-    """A widget to display detailed information about an LXC container."""
-
-    DEFAULT_CSS = f"""
-    LXCDetailView {{
-        padding: 2;
-    }}
-    {SHARED_CSS}
-    """
-
-    def __init__(self, server: models.ServerLXC, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.server = server
-
-    def compose(self) -> ComposeResult:
-        brief = self.server.brief
-
-        yield from self._yield_basic_info(brief, 'LXC Container')
-        yield from self._yield_hardware_header()
-        yield from self._yield_common_hardware(brief, self.server)
-        yield Label(f'Disk: {self.server.max_disk / consts.GIGABYTES:.2f} GB')
-        yield Static()  # Spacer
-
-        if brief.status == models.ServerStatus.Running:
-            yield Static('Current Usage', classes='section-title')
-            yield Label(f'CPU Usage: {brief.cpu_usage * 100:.2f}%')
-            yield Label(f'Memory Used: {brief.memory_used / consts.GIGABYTES:.2f} GB')
-            yield Label(f'Disk Used: {self.server.disk / consts.GIGABYTES:.2f} GB')
-            yield Label(f'Uptime: {self._format_uptime(brief.uptime)}')
-        else:
-            yield Static('Container is offline', classes='detail-label')
-        yield Static()  # Spacer
-
-        yield from self._yield_boot_config(self.server.on_boot)
-
-
-class QEMUDetailView(BaseDetailView):
-    """A widget to display detailed information about a QEMU VM."""
-
-    DEFAULT_CSS = f"""
-    QEMUDetailView {{
-        padding: 2;
-    }}
-    {SHARED_CSS}
-    """
-
-    def __init__(self, server: models.ServerQEMU, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.server = server
-
-    def compose(self) -> ComposeResult:
-        brief = self.server.brief
-
-        yield from self._yield_basic_info(brief, 'QEMU Virtual Machine')
-        yield from self._yield_hardware_header()
-        yield Label(f'CPU Type: {self.server.cpu_type}')
-        yield from self._yield_common_hardware(brief, self.server)
-        yield Label(f'Balloon: {self.server.baloon / consts.GIGABYTES:.2f} GB')
-        yield Static()  # Spacer
-
-        if brief.status == models.ServerStatus.Running:
-            yield Static('Current Usage', classes='section-title')
-            yield Label(f'CPU Usage: {brief.cpu_usage * 100:.2f}%')
-            yield Label(f'Memory Used: {brief.memory_used / consts.GIGABYTES:.2f} GB')
-            yield Label(f'Uptime: {self._format_uptime(brief.uptime)}')
-        else:
-            yield Static('Virtual machine is offline', classes='detail-label')
-        yield Static()  # Spacer
-
-        yield from self._yield_boot_config(self.server.on_boot)
-
-
-class ServerDetailView(VerticalScroll):
+class ServerDetailView(VerticalScroll, BaseDetailView):
     """A widget to display detailed information about a server."""
 
-    DEFAULT_CSS = """
-    ServerDetailView {
+    DEFAULT_CSS = f"""
+    ServerDetailView {{
         height: 100%;
-    }
+        padding: 2;
+    }}
+    {SHARED_CSS}
 
-    .server-detail {
+    .server-detail {{
         color: $text;
-    }
+    }}
     """
 
     def __init__(self, server: models.ServerQEMU | models.ServerLXC, **kwargs) -> None:
@@ -169,9 +98,48 @@ class ServerDetailView(VerticalScroll):
         self.server = server
 
     def compose(self) -> ComposeResult:
+        brief = self.server.brief
+
         if isinstance(self.server, models.ServerLXC):
-            yield LXCDetailView(self.server)
+            yield from self._yield_basic_info(brief, 'LXC Container')
+            yield from self._yield_hardware_header()
+            yield from self._yield_common_hardware(brief, self.server)
+            yield Label(f'Disk: {self.server.max_disk / consts.GIGABYTES:.2f} GB')
+            yield Static()  # Spacer
+
+            if brief.status == models.ServerStatus.Running:
+                yield Static('Current Usage', classes='section-title')
+                yield Label(f'CPU Usage: {brief.cpu_usage * 100:.2f}%')
+                yield Label(
+                    f'Memory Used: {brief.memory_used / consts.GIGABYTES:.2f} GB',
+                )
+                yield Label(f'Disk Used: {self.server.disk / consts.GIGABYTES:.2f} GB')
+                yield Label(f'Uptime: {self._format_uptime(brief.uptime)}')
+            else:
+                yield Static('Container is offline', classes='detail-label')
+            yield Static()  # Spacer
+
+            yield from self._yield_boot_config(self.server.on_boot)
+
         elif isinstance(self.server, models.ServerQEMU):
-            yield QEMUDetailView(self.server)
+            yield from self._yield_basic_info(brief, 'QEMU Virtual Machine')
+            yield from self._yield_hardware_header()
+            yield Label(f'CPU Type: {self.server.cpu_type}')
+            yield from self._yield_common_hardware(brief, self.server)
+            yield Label(f'Balloon: {self.server.baloon / consts.GIGABYTES:.2f} GB')
+            yield Static()  # Spacer
+
+            if brief.status == models.ServerStatus.Running:
+                yield Static('Current Usage', classes='section-title')
+                yield Label(f'CPU Usage: {brief.cpu_usage * 100:.2f}%')
+                yield Label(
+                    f'Memory Used: {brief.memory_used / consts.GIGABYTES:.2f} GB',
+                )
+                yield Label(f'Uptime: {self._format_uptime(brief.uptime)}')
+            else:
+                yield Static('Virtual machine is offline', classes='detail-label')
+            yield Static()  # Spacer
+
+            yield from self._yield_boot_config(self.server.on_boot)
         else:
             yield Static('Unknown server type', classes='server-detail')

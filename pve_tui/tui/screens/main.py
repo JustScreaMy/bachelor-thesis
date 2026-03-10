@@ -34,6 +34,7 @@ class MainScreen(Screen):
         #server-list {
             height: 100%;
             scrollbar-visibility: hidden;
+            scrollbar-size: 0 0;
             background: $surface;
             padding: 0 1;
         }
