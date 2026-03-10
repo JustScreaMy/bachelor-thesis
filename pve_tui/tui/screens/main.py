@@ -1,3 +1,5 @@
+from enum import auto
+from enum import Enum
 from typing import ClassVar
 from typing import TYPE_CHECKING
 
@@ -16,10 +18,20 @@ from pve_tui.tui.widgets.server_action_list import ServerActionList
 if TYPE_CHECKING:
     from pve_tui.tui.app import PveTuiApp
 
-from pve_tui.tui.widgets import MultiselectListView, ServerDetailView
+from pve_tui.tui.widgets import (
+    MultiselectListView,
+    ServerDetailView,
+    ServerGroupBrief,
+    ServerGroupDetailView,
+)
 from pve_tui.tui.widgets import MultiselectListItem
 from pve_tui.tui.widgets import SplitView
 from pve_tui.tui.widgets import ServerBrief
+
+
+class ViewMode(Enum):
+    SERVERS = auto()
+    GROUPS = auto()
 
 
 class MainScreen(Screen):
@@ -42,11 +54,44 @@ class MainScreen(Screen):
 
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding('r', 'refresh', 'Refresh Server List'),
+        Binding('g', 'toggle_view_mode', 'Toggle Servers/Groups'),
         Binding('q', 'quit', 'Quit'),
     ]
 
+    current_view_mode: ViewMode = ViewMode.SERVERS
+    _all_servers: list[models.ServerBrief] = []
+
     def action_quit(self) -> None:
         self.app.exit()
+
+    async def action_toggle_view_mode(self) -> None:
+        if self.current_view_mode == ViewMode.SERVERS:
+            self.current_view_mode = ViewMode.GROUPS
+        else:
+            self.current_view_mode = ViewMode.SERVERS
+
+        # Clear selections when switching modes
+        server_list = self.query_one('#server-list', MultiselectListView)
+        for child in server_list.selected_children:
+            child.selected = False
+
+        await self.refresh_list_ui()
+        server_list.focus()
+
+    def _get_groups(self) -> list[models.ServerGroupBrief]:
+        groups_dict: dict[str, list[models.ServerBrief]] = {}
+        for server in self._all_servers:
+            for tag in server.tags:
+                if tag.startswith('pve-tui-'):
+                    group_name = tag[len('pve-tui-') :]
+                    if group_name not in groups_dict:
+                        groups_dict[group_name] = []
+                    groups_dict[group_name].append(server)
+
+        return [
+            models.ServerGroupBrief(name=name, servers=servers)
+            for name, servers in sorted(groups_dict.items())
+        ]
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -63,102 +108,142 @@ class MainScreen(Screen):
         cluster_service = self.app.cluster_service
 
         self.log('Refreshing server list...')
+        self._all_servers = await cluster_service.fetch_servers_brief()
+        # Sort data to match expected display order
+        self._all_servers.sort(key=lambda x: x.server_id)
+
+        await self.refresh_list_ui()
+        self.log('Refreshing server list finished')
+
+    async def refresh_list_ui(self) -> None:
         server_list = self.query_one('#server-list', MultiselectListView)
 
-        servers_data = await cluster_service.fetch_servers_brief()
-        # Sort data to match expected display order
-        servers_data.sort(key=lambda x: x.server_id)
+        if self.current_view_mode == ViewMode.SERVERS:
+            items_to_display = [
+                (f'{s.type}-{s.server_id}', s) for s in self._all_servers
+            ]
+            widget_class = ServerBrief
+        else:
+            groups = self._get_groups()
+            items_to_display = [(f'group-{g.name}', g) for g in groups]
+            widget_class = ServerGroupBrief
 
         # Snapshot current children for reconciliation
         current_children = list(server_list.children)
         ui_index = 0
 
-        for server in servers_data:
-            item_id = f'{server.type}-{server.server_id}'
+        for item_id, item_data in items_to_display:
             inserted_or_updated = False
 
             while not inserted_or_updated:
                 # If we exhausted the current UI list, append the remaining
                 if ui_index >= len(current_children):
-                    new_item = MultiselectListItem(ServerBrief(server), id=item_id)
+                    new_item = MultiselectListItem(
+                        widget_class(item_data),
+                        id=item_id,
+                    )
                     await server_list.append(new_item)
                     inserted_or_updated = True
                     break
 
                 current_child = current_children[ui_index]
-
-                # Get current child ID
                 current_id = current_child.id
 
-                try:
-                    if current_id and '-' in current_id:
-                        parts = current_id.split('-')
-                        current_type = parts[0]
-                        current_sid = int(parts[1])
-                    else:
-                        raise ValueError('Invalid ID')
-                except (ValueError, IndexError, AttributeError):
-                    # Invalid or unexpected child, remove it
-                    await current_child.remove()
-                    current_children.pop(ui_index)
-                    continue
+                # Define a helper for comparison
+                is_after = False
+                if self.current_view_mode == ViewMode.SERVERS:
+                    # item_id is f'{type}-{sid}'
+                    try:
+                        _, curr_sid_str = current_id.split('-')
+                        _, item_sid_str = item_id.split('-')
+                        is_after = int(curr_sid_str) > int(item_sid_str)
+                    except (ValueError, AttributeError):
+                        is_after = current_id > item_id
+                else:
+                    is_after = current_id > item_id
 
-                if current_sid == server.server_id and current_type == server.type:
-                    brief = current_child.query_one(ServerBrief)
-                    brief.update(server)
+                if current_id == item_id:
+                    brief = current_child.query_one(widget_class)
+                    brief.update(item_data)
 
                     ui_index += 1
-
                     inserted_or_updated = True
 
-                elif current_sid > server.server_id:
-                    new_item = MultiselectListItem(ServerBrief(server), id=item_id)
+                elif is_after:
+                    new_item = MultiselectListItem(
+                        widget_class(item_data),
+                        id=item_id,
+                    )
 
                     await server_list.mount(new_item, before=current_child)
 
                     inserted_or_updated = True
                 else:
                     await current_child.remove()
-
                     current_children.pop(ui_index)
 
         while ui_index < len(current_children):
             await current_children[ui_index].remove()
             ui_index += 1
 
-        if len(server_list) > 0 and server_list.index is None:
-            server_list.index = 0
+        if len(server_list) > 0:
+            # Re-validate the index and force a highlight refresh
+            current_index = server_list.index if server_list.index is not None else 0
+            validated_index = server_list.validate_index(current_index)
 
-        self.log('Refreshing server list finished')
+            # If the index is already what we want, the watcher might not fire
+            # if we just set it. We want to ensure it fires.
+            server_list.index = None
+            server_list.index = validated_index
+        else:
+            server_list.index = None
 
     @on(MultiselectListView.Highlighted)
     def _handle_highlighted(self, message: MultiselectListView.Highlighted) -> None:
-        """Handle when a server item is highlighted."""
+        """Handle when an item is highlighted."""
         server_list = self.query_one('#server-list', MultiselectListView)
+        split_view = self.query_one('#split-view', SplitView)
 
-        # Only update if no servers are selected
+        # Only update if no items are selected
         if len(server_list.selected_children) == 0 and message.item is not None:
-            server_brief = message.item.query_one(ServerBrief).server_info
-            split_view = self.query_one('#split-view', SplitView)
-            self._fetch_and_display_server_details(server_brief, split_view)
+            if self.current_view_mode == ViewMode.SERVERS:
+                server_brief = message.item.query_one(ServerBrief).server_info
+                self._fetch_and_display_server_details(server_brief, split_view)
+            else:
+                group_info = message.item.query_one(ServerGroupBrief).group_info
+                split_view.set_right_pane(ServerGroupDetailView(group_info))
 
     @on(MultiselectListItem.Selected)
     def _handle_selected(self, _message: MultiselectListItem.Selected) -> None:
-        """Handle when a server item is selected/deselected."""
+        """Handle when an item is selected/deselected."""
         server_list = self.query_one('#server-list', MultiselectListView)
         split_view = self.query_one('#split-view', SplitView)
         selected_children = server_list.selected_children
 
         if selected_children:
-            selected_servers = [
-                child.query_one(ServerBrief).server_info for child in selected_children
-            ]
-            split_view.set_right_pane(ServerActionList(selected_servers))
+            selected_servers = []
+            if self.current_view_mode == ViewMode.SERVERS:
+                selected_servers = [
+                    child.query_one(ServerBrief).server_info
+                    for child in selected_children
+                ]
+            else:
+                for child in selected_children:
+                    group_info = child.query_one(ServerGroupBrief).group_info
+                    selected_servers.extend(group_info.servers)
+
+            # De-duplicate servers if they are in multiple groups
+            unique_servers = {s.server_id: s for s in selected_servers}.values()
+            split_view.set_right_pane(ServerActionList(list(unique_servers)))
         else:
             highlighted_item = server_list.highlighted_child
             if highlighted_item is not None:
-                server_brief = highlighted_item.query_one(ServerBrief).server_info
-                self._fetch_and_display_server_details(server_brief, split_view)
+                if self.current_view_mode == ViewMode.SERVERS:
+                    server_brief = highlighted_item.query_one(ServerBrief).server_info
+                    self._fetch_and_display_server_details(server_brief, split_view)
+                else:
+                    group_info = highlighted_item.query_one(ServerGroupBrief).group_info
+                    split_view.set_right_pane(ServerGroupDetailView(group_info))
 
     @work(exclusive=True)
     async def _fetch_and_display_server_details(
@@ -186,4 +271,5 @@ class MainScreen(Screen):
             self.log(f'Error fetching server details: {e}')
 
     def on_mount(self) -> None:
+        self.query_one('#server-list').focus()
         self.action_refresh()

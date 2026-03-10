@@ -60,6 +60,28 @@ class ServerBrief:
 
     uptime: int
 
+    tags: list[str]
+
+
+@dataclass
+class ServerGroupBrief:
+    """
+    Data class representing a brief overview of a server group.
+    Groups are derived from Proxmox tags with 'pve-tui-' prefix.
+
+    Attributes:
+        name (str): Name of the group (the part after 'pve-tui-').
+        server_ids (list[int]): List of VMIDs belonging to this group.
+        servers (list[ServerBrief]): Full server objects for these IDs.
+    """
+
+    name: str
+    servers: list[ServerBrief]
+
+    @property
+    def server_ids(self) -> list[int]:
+        return [s.server_id for s in self.servers]
+
 
 class ServerArch(StrEnum):
     """

@@ -38,6 +38,17 @@ class ClusterService:
         except ValueError:
             status = models.ServerStatus.Stopped
 
+        tags_raw = server_data.get('tags', '')
+        if isinstance(tags_raw, str):
+            # Proxmox tags can be separated by different characters, usually ;
+            tags = [
+                t.strip()
+                for t in tags_raw.replace(';', ' ').replace(',', ' ').split()
+                if t.strip()
+            ]
+        else:
+            tags = []
+
         return models.ServerBrief(
             server_id=server_data.get('vmid', 0),
             name=server_data.get('name', ''),
@@ -49,6 +60,7 @@ class ClusterService:
             memory_used=server_data.get('mem', 0),
             uptime=server_data.get('uptime', 0),
             node=node,
+            tags=tags,
         )
 
     async def fetch_server_brief(
