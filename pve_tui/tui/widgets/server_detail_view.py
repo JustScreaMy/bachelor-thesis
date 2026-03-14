@@ -126,7 +126,7 @@ class ServerDetailView(VerticalScroll, BaseDetailView):
             yield from self._yield_hardware_header()
             yield Label(f'CPU Type: {self.server.cpu_type}')
             yield from self._yield_common_hardware(brief, self.server)
-            yield Label(f'Balloon: {self.server.baloon / consts.GIGABYTES:.2f} GB')
+            yield Label(f'Balloon: {self.server.balloon / consts.GIGABYTES:.2f} GB')
             yield Static()  # Spacer
 
             if brief.status == models.ServerStatus.Running:

@@ -1,8 +1,10 @@
 from textual.app import App
 
 from ..core import models
+from ..core.services.action import ActionService
 from ..core.services.api import ProxmoxClient
-from ..core.services.cluster import ClusterService
+from ..core.services.discovery import DiscoveryService
+from ..core.services.resource import ResourceService
 from .screens import MainScreen
 
 
@@ -15,14 +17,19 @@ class PveTuiApp(App):
 
     application_config: models.ApplicationConfig
     client: ProxmoxClient
-    cluster_service: ClusterService
+    discovery_service: DiscoveryService
+    resource_service: ResourceService
+    action_service: ActionService
 
     def __init__(self, application_config: models.ApplicationConfig, **kwargs) -> None:
         super().__init__(**kwargs)
 
         self.application_config = application_config
         self.client = ProxmoxClient.from_config(self.application_config)
-        self.cluster_service = ClusterService(self.client)
+
+        self.resource_service = ResourceService(self.client)
+        self.discovery_service = DiscoveryService(self.client, self.resource_service)
+        self.action_service = ActionService(self.client)
 
     async def on_mount(self) -> None:
         self.log('ProxmoxClient health: %s', await self.client.is_healthy())

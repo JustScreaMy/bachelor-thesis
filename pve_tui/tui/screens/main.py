@@ -105,10 +105,19 @@ class MainScreen(Screen):
 
     @work(exclusive=True)
     async def action_refresh(self) -> None:
-        cluster_service = self.app.cluster_service
+        discovery_service = self.app.discovery_service
 
         self.log('Refreshing server list...')
-        self._all_servers = await cluster_service.fetch_servers_brief()
+        try:
+            self._all_servers = await discovery_service.fetch_all_servers()
+        except Exception as e:
+            self.log(f'Error during refresh: {e}')
+            self.notify(
+                f'Failed to refresh server list: {e}',
+                severity='error',
+            )
+            return
+
         # Sort data to match expected display order
         self._all_servers.sort(key=lambda x: x.server_id)
 
@@ -252,16 +261,16 @@ class MainScreen(Screen):
         split_view: SplitView,
     ) -> None:
         """Fetch full server details and display them in the detail view."""
-        cluster_service = self.app.cluster_service
+        resource_service = self.app.resource_service
 
         try:
             if server_brief.type == models.ServerType.VM:
-                server_details = await cluster_service.fetch_server_details_qemu(
+                server_details = await resource_service.fetch_server_details_qemu(
                     server_brief.node,
                     server_brief.server_id,
                 )
             else:  # LXC
-                server_details = await cluster_service.fetch_server_details_lxc(
+                server_details = await resource_service.fetch_server_details_lxc(
                     server_brief.node,
                     server_brief.server_id,
                 )

@@ -46,11 +46,13 @@ class ContextConfig:
         base_url (str): The base URL of the Proxmox VE API.
         token_id (str): The token ID for authentication.
         token (str): The token secret for authentication.
+        verify_ssl (bool): Whether to verify SSL certificates.
     """
 
     base_url: str
     token_id: str
     token: str
+    verify_ssl: bool = False
 
     @classmethod
     def from_dict(cls, data: dict[Any, Any]) -> Self:
@@ -59,6 +61,7 @@ class ContextConfig:
                 base_url=data['base_url'],
                 token_id=data['token_id'],
                 token=data['token'],
+                verify_ssl=data.get('verify_ssl', False),
             )
         except KeyError:
             raise ValueError('Missing required context configuration fields')
