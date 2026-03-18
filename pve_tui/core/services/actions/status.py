@@ -32,3 +32,32 @@ class StatusManager(ActionManager):
     async def reboot(self, server: 'models.ServerBrief') -> str:
         """Reboots the server."""
         return await self._post(server, 'reboot')
+
+    # Bulk Actions
+    async def start_many(
+        self,
+        servers: list['models.ServerBrief'],
+    ) -> tuple[dict[int, str], dict[int, Exception]]:
+        """Starts multiple servers in parallel."""
+        return await self.run_bulk(servers, self.start)
+
+    async def stop_many(
+        self,
+        servers: list['models.ServerBrief'],
+    ) -> tuple[dict[int, str], dict[int, Exception]]:
+        """Stops multiple servers in parallel."""
+        return await self.run_bulk(servers, self.stop)
+
+    async def shutdown_many(
+        self,
+        servers: list['models.ServerBrief'],
+    ) -> tuple[dict[int, str], dict[int, Exception]]:
+        """Shuts down multiple servers in parallel."""
+        return await self.run_bulk(servers, self.shutdown)
+
+    async def reboot_many(
+        self,
+        servers: list['models.ServerBrief'],
+    ) -> tuple[dict[int, str], dict[int, Exception]]:
+        """Reboots multiple servers in parallel."""
+        return await self.run_bulk(servers, self.reboot)

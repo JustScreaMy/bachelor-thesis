@@ -35,10 +35,6 @@ class SplitView(Widget):
         width: 1fr;
         background: $surface;
     }
-
-    .split-pane:focus-within {
-        background: $surface-lighten-1;
-    }
     """
 
     def __init__(

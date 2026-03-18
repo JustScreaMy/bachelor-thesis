@@ -1,3 +1,7 @@
+import asyncio
+from typing import Any
+from typing import Awaitable
+from typing import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,3 +32,28 @@ class ActionManager:
         """Constructs the API path for snapshot actions."""
         etype = 'qemu' if server.type == 'vm' else 'lxc'
         return f'/nodes/{server.node}/{etype}/{server.server_id}/snapshot'
+
+    async def run_bulk(
+        self,
+        servers: list['models.ServerBrief'],
+        action_func: Callable[['models.ServerBrief'], Awaitable[Any]],
+    ) -> tuple[dict[int, Any], dict[int, Exception]]:
+        """
+        Executes an action function in parallel across multiple servers.
+
+        Returns:
+            A tuple of (results, errors) where both are dicts keyed by VMID.
+        """
+        tasks = [action_func(server) for server in servers]
+        results_list = await asyncio.gather(*tasks, return_exceptions=True)
+
+        successes = {}
+        failures = {}
+
+        for server, result in zip(servers, results_list):
+            if isinstance(result, Exception):
+                failures[server.server_id] = result
+            else:
+                successes[server.server_id] = result
+
+        return successes, failures
