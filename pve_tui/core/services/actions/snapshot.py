@@ -29,6 +29,8 @@ class SnapshotManager(ActionManager):
             'snapname': name,
             'description': description,
         }
+        # Note: Proxmox VMs support 'vmstate', but containers do not.
+        # We keep it simple for now as it defaults to False/0.
         async with self.client.request(path, method='POST', json=payload) as resp:
             resp.raise_for_status()
             data = await resp.json()
@@ -50,11 +52,11 @@ class SnapshotManager(ActionManager):
         """Finds the latest snapshot and rolls back to it."""
         snapshots = await self.list_snapshots(server)
         # Filter out 'current' and sort by time (descending)
-        # Proxmox snapshots in the list usually have a 'snaptime' field
         valid_snapshots = [s for s in snapshots if s.get('name') != 'current']
         if not valid_snapshots:
             raise ValueError(f'No snapshots found for server {server.server_id}')
 
+        # snaptime is a Unix timestamp
         latest = max(valid_snapshots, key=lambda x: x.get('snaptime', 0))
         return await self.rollback(server, latest['name'])
 
@@ -67,7 +69,7 @@ class SnapshotManager(ActionManager):
     ) -> tuple[dict[int, str], dict[int, Exception]]:
         """Creates a snapshot for multiple servers in parallel."""
 
-        async def _create(s):
+        async def _create(s: 'models.ServerBrief'):
             return await self.create(s, name, description)
 
         return await self.run_bulk(servers, _create)

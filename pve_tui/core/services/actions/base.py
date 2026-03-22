@@ -33,8 +33,8 @@ class ActionManager:
         etype = 'qemu' if server.type == 'vm' else 'lxc'
         return f'/nodes/{server.node}/{etype}/{server.server_id}/snapshot'
 
+    @staticmethod
     async def run_bulk(
-        self,
         servers: list['models.ServerBrief'],
         action_func: Callable[['models.ServerBrief'], Awaitable[Any]],
     ) -> tuple[dict[int, Any], dict[int, Exception]]:

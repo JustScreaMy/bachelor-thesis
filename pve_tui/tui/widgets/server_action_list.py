@@ -112,9 +112,8 @@ class ServerActionList(Vertical):
             Option('Stop (Power Off)', id='stop', disabled=not can_stop),
             Option('Reboot', id='reboot', disabled=not can_stop),
             Option('Shutdown', id='shutdown', disabled=not can_stop),
+            Option('---', disabled=True),
         ]
-
-        options.append(Option('---', disabled=True))
 
         if self.groups:
             options.append(Option('Remove Group(s)', id='remove_groups'))
@@ -133,6 +132,10 @@ class ServerActionList(Vertical):
                         Option(f'Remove from {gname}', id=f'remove_from_group:{gname}'),
                     )
 
+        options.append(Option('---', disabled=True))
+        options.append(Option('Create Snapshot', id='create_snapshot'))
+        options.append(Option('Rollback to Latest', id='rollback_latest'))
+
         yield OptionList(*options, id='action-options')
 
     def on_focus(self, event: events.Focus) -> None:
@@ -143,6 +146,7 @@ class ServerActionList(Vertical):
             pass
 
     @on(OptionList.OptionSelected, '#action-options')
+    @work
     async def handle_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle when an action is selected from the list."""
         action_id = event.option_id
@@ -157,16 +161,94 @@ class ServerActionList(Vertical):
             self.run_remove_groups()
         elif action_id.startswith('remove_from_group:'):
             self.run_remove_from_group(action_id.split(':', 1)[1])
+        elif action_id == 'create_snapshot':
+            await self.prompt_create_snapshot()
+        elif action_id == 'rollback_latest':
+            self.run_rollback_latest()
 
     async def prompt_create_group(self) -> None:
         """Prompt for a group name and create it."""
         from pve_tui.tui.screens.input_modal import InputModal
 
-        name = await self.app.push_screen(
+        name = await self.app.push_screen_wait(
             InputModal('Create Group', placeholder='Group name...'),
         )
         if name:
             self.run_create_group(name)
+
+    async def prompt_create_snapshot(self) -> None:
+        """Prompt for a snapshot name and create it."""
+        from pve_tui.tui.screens.input_modal import InputModal
+
+        name = await self.app.push_screen_wait(
+            InputModal('Create Snapshot', placeholder='Snapshot name...'),
+        )
+        if name:
+            self.run_create_snapshot(name)
+
+    def _get_target_servers(self) -> list[models.ServerBrief]:
+        """Collects all unique servers from current selection or groups."""
+        if self.groups:
+            all_group_servers = []
+            for g in self.groups:
+                all_group_servers.extend(g.servers)
+            # De-duplicate
+            return list({s.server_id: s for s in all_group_servers}.values())
+        return self.servers
+
+    @work(exclusive=True)
+    async def run_create_snapshot(self, name: str) -> None:
+        """Creates a snapshot for all targeted servers."""
+        target_servers = self._get_target_servers()
+        if not target_servers:
+            return
+
+        self.notify(
+            f"Creating snapshot '{name}' for {len(target_servers)} server(s)...",
+        )
+        successes, failures = await self.app.action_service.snapshots.create_many(
+            target_servers,
+            name,
+        )
+
+        if successes:
+            self.notify(f"Snapshot '{name}' triggered for {len(successes)} server(s).")
+        if failures:
+            self.notify(
+                f'Failed to create snapshot for {len(failures)} server(s).',
+                severity='error',
+            )
+
+        await self._trigger_refresh()
+
+    @work(exclusive=True)
+    async def run_rollback_latest(self) -> None:
+        """Rolls back all targeted servers to their latest snapshots."""
+        target_servers = self._get_target_servers()
+        if not target_servers:
+            return
+
+        self.notify(
+            f'Rolling back {len(target_servers)} server(s) to latest snapshots...',
+        )
+        (
+            successes,
+            failures,
+        ) = await self.app.action_service.snapshots.rollback_to_latest_many(
+            target_servers,
+        )
+
+        if successes:
+            self.notify(
+                f'Successfully triggered rollback for {len(successes)} server(s).',
+            )
+        if failures:
+            self.notify(
+                f'Failed to rollback {len(failures)} server(s). Check if they have snapshots.',
+                severity='error',
+            )
+
+        await self._trigger_refresh()
 
     @work(exclusive=True)
     async def run_create_group(self, name: str) -> None:
