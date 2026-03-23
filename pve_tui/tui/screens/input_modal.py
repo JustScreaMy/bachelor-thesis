@@ -13,33 +13,39 @@ class InputModal(ModalScreen[str]):
     DEFAULT_CSS = """
     InputModal {
         align: center middle;
+        background: rgba(0, 0, 0, 0.5);
     }
 
     #modal-container {
         width: 60;
         height: auto;
-        border: thick $primary;
-        background: $surface;
-        padding: 1 2;
+        border: solid $primary;
+        background: $panel;
+        padding: 1 4;
     }
 
     #modal-title {
         text-align: center;
         text-style: bold;
+        color: $text;
         margin-bottom: 1;
     }
 
     #modal-input {
         margin-bottom: 1;
+        border: solid $primary-darken-1;
+        background: $surface;
     }
 
     #modal-buttons {
+        margin-top: 1;
         align: center middle;
-        height: auto;
+        height: 3;
     }
 
     #modal-buttons Button {
         margin: 0 1;
+        min-width: 12;
     }
     """
 

@@ -178,10 +178,19 @@ class ServerActionList(Vertical):
 
     async def prompt_create_snapshot(self) -> None:
         """Prompt for a snapshot name and create it."""
+        from datetime import datetime
+
         from pve_tui.tui.screens.input_modal import InputModal
 
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        default_name = f'snap_{timestamp}'
+
         name = await self.app.push_screen_wait(
-            InputModal('Create Snapshot', placeholder='Snapshot name...'),
+            InputModal(
+                'Create Snapshot',
+                placeholder='Snapshot name...',
+                initial_value=default_name,
+            ),
         )
         if name:
             self.run_create_snapshot(name)
