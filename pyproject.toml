@@ -9,10 +9,12 @@ requires-python = ">=3.14"
 dependencies = [
     "aiohttp>=3.13.3",
     "textual>=7.4.0",
+    "typer>=0.24.1",
 ]
 
 [project.scripts]
 pve-tui = "pve_tui.main:main"
+pve = "pve_tui.cli.main:app"
 
 
 [dependency-groups]
