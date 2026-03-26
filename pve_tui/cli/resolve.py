@@ -1,3 +1,4 @@
+import typer
 from rich.console import Console
 
 from ..core.models.server import ServerBrief
@@ -31,8 +32,6 @@ async def resolve_targets(
     Numeric targets are matched by VMID; non-numeric targets are matched by group name.
     Raises typer.BadParameter if any target cannot be resolved.
     """
-    import typer
-
     servers = await ctx.discovery.fetch_all_servers()
     server_by_id = {s.server_id: s for s in servers}
     groups = _get_groups(servers)
