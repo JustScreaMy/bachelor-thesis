@@ -29,7 +29,7 @@ token_id = "your_token_id"
 token = "your_secret_token"
 ```
 
-Multiple contexts are supported for managing several clusters. See `config.example.toml` for reference.
+The config format supports multiple contexts (see `config.example.toml`), but context selection is not yet implemented — the app currently uses the first context alphabetically.
 
 Environment variables `PVE_TOKEN_ID` and `PVE_TOKEN` override config values.
 
