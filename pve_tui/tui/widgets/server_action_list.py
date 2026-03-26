@@ -135,6 +135,7 @@ class ServerActionList(Vertical):
         options.append(Option('---', disabled=True))
         options.append(Option('Create Snapshot', id='create_snapshot'))
         options.append(Option('Rollback to Latest', id='rollback_latest'))
+        options.append(Option('Rollback to Selection', id='rollback_selection'))
 
         yield OptionList(*options, id='action-options')
 
@@ -165,6 +166,8 @@ class ServerActionList(Vertical):
             await self.prompt_create_snapshot()
         elif action_id == 'rollback_latest':
             self.run_rollback_latest()
+        elif action_id == 'rollback_selection':
+            await self.prompt_rollback_selection()
 
     async def prompt_create_group(self) -> None:
         """Prompt for a group name and create it."""
@@ -194,6 +197,100 @@ class ServerActionList(Vertical):
         )
         if name:
             self.run_create_snapshot(name)
+
+    async def prompt_rollback_selection(self) -> None:
+        """Prompt the user to select a snapshot for each targeted server."""
+        from datetime import datetime
+
+        from pve_tui.tui.screens.selection_modal import SelectionModal
+
+        target_servers = self._get_target_servers()
+        if not target_servers:
+            return
+
+        rollback_targets: list[tuple[models.ServerBrief, str]] = []
+
+        for server in target_servers:
+            try:
+                snapshots = await self.app.action_service.snapshots.list_snapshots(
+                    server,
+                )
+            except Exception:
+                self.notify(
+                    f'Failed to fetch snapshots for {server.name}.',
+                    severity='error',
+                )
+                continue
+
+            valid = [s for s in snapshots if s.get('name') != 'current']
+            if not valid:
+                self.notify(
+                    f'No snapshots found for {server.name}.',
+                    severity='warning',
+                )
+                continue
+
+            # Sort by time descending (newest first)
+            valid.sort(key=lambda x: x.get('snaptime', 0), reverse=True)
+
+            options: list[tuple[str, str]] = []
+            for snap in valid:
+                name = snap['name']
+                snaptime = snap.get('snaptime', 0)
+                timestamp = datetime.fromtimestamp(snaptime).strftime(
+                    '%Y-%m-%d %H:%M',
+                )
+                description = snap.get('description', '')
+                label = f'{name}  ({timestamp})'
+                if description:
+                    label += f'  - {description}'
+                options.append((name, label))
+
+            selected = await self.app.push_screen_wait(
+                SelectionModal(
+                    f'Rollback: {server.name} ({server.server_id})',
+                    options,
+                ),
+            )
+
+            if selected:
+                rollback_targets.append((server, selected))
+
+        if rollback_targets:
+            self.run_rollback_selection(rollback_targets)
+
+    @work(exclusive=True)
+    async def run_rollback_selection(
+        self,
+        targets: list[tuple[models.ServerBrief, str]],
+    ) -> None:
+        """Rolls back each server to its selected snapshot."""
+        self.notify(f'Rolling back {len(targets)} server(s)...')
+
+        successes = 0
+        failures = 0
+
+        for server, snapshot_name in targets:
+            try:
+                await self.app.action_service.snapshots.rollback(
+                    server,
+                    snapshot_name,
+                )
+                successes += 1
+            except Exception:
+                failures += 1
+
+        if successes:
+            self.notify(
+                f'Successfully triggered rollback for {successes} server(s).',
+            )
+        if failures:
+            self.notify(
+                f'Failed to rollback {failures} server(s).',
+                severity='error',
+            )
+
+        await self._trigger_refresh()
 
     def _get_target_servers(self) -> list[models.ServerBrief]:
         """Collects all unique servers from current selection or groups."""
