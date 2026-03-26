@@ -100,11 +100,42 @@ async def rollback(
         list[str],
         typer.Argument(help='VMIDs or group names to rollback.'),
     ],
+    snapshot: Annotated[
+        Optional[str],
+        typer.Option(
+            '--snapshot',
+            '-s',
+            help='Snapshot name to rollback to. If omitted, rolls back to latest.',
+        ),
+    ] = None,
 ) -> None:
-    """Rollback one or more servers to their latest snapshot."""
+    """Rollback one or more servers to a snapshot."""
     async with create_service_context() as ctx:
         servers = await resolve_targets(ctx, targets)
-        successes, failures = await ctx.actions.snapshots.rollback_to_latest_many(
-            servers,
-        )
+
+        if snapshot is None:
+            successes, failures = await ctx.actions.snapshots.rollback_to_latest_many(
+                servers,
+            )
+        else:
+            successes: dict[int, str] = {}
+            failures: dict[int, Exception] = {}
+
+            for server in servers:
+                try:
+                    snaps = await ctx.actions.snapshots.list_snapshots(server)
+                    names = [s.get('name') for s in snaps if s.get('name') != 'current']
+
+                    if snapshot not in names:
+                        console.print(
+                            f'[yellow]Skipping {server.name} ({server.server_id}): '
+                            f"snapshot '{snapshot}' not found.[/yellow]",
+                        )
+                        continue
+
+                    upid = await ctx.actions.snapshots.rollback(server, snapshot)
+                    successes[server.server_id] = upid
+                except Exception as e:
+                    failures[server.server_id] = e
+
         report_bulk_result(console, 'Snapshot rollback', successes, failures)
