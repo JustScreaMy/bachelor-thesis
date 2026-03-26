@@ -1,5 +1,4 @@
 from textual.app import ComposeResult
-from textual.containers import Horizontal
 from textual.widget import Widget
 from textual.widgets import Label
 
@@ -12,36 +11,24 @@ class ServerGroupBrief(Widget):
     DEFAULT_CSS = """
         ServerGroupBrief {
             height: auto;
-            border: none $primary-darken-1;
-            padding: 1;
+            padding: 0 1;
         }
 
-        ServerGroupBrief:hover {
-            background: $panel-lighten-3;
-        }
-
-        .group-header {
-            width: 100%;
-            height: 1;
-        }
-
-        .group-name {
-            text-style: bold;
-            color: $text;
-        }
-
-        .group-count {
-            color: $text-muted;
-        }
-
-        .group-status {
+        .group-all-running {
             color: $success;
-            text-style: bold;
         }
 
-        .group-members {
-            margin-top: 1;
+        .group-partial {
+            color: $warning;
+        }
+
+        .group-all-stopped {
             color: $text-muted;
+        }
+
+        .group-detail {
+            color: $text-muted;
+            padding: 0 0 0 2;
         }
     """
 
@@ -50,48 +37,42 @@ class ServerGroupBrief(Widget):
         super().__init__(**kwargs)
         self.group_info = group_info
 
-    def compose(self) -> ComposeResult:
-        running_count = sum(
+    def _counts(self) -> tuple[int, int]:
+        running = sum(
             1
             for s in self.group_info.servers
             if s.status == models.ServerStatus.Running
         )
-        total_count = len(self.group_info.servers)
+        return running, len(self.group_info.servers)
 
-        yield Horizontal(
-            Label(f'Group: {self.group_info.name}', classes='group-name'),
-            Label(f' ({total_count} members)', classes='group-count'),
-            Label(
-                f' {running_count}/{total_count} online',
-                classes='group-status',
-            ),
-            classes='group-header',
-        )
+    def _status_icon_and_class(self) -> tuple[str, str]:
+        running, total = self._counts()
+        if running == total:
+            return '●', 'group-name group-all-running'
+        elif running > 0:
+            return '◐', 'group-name group-partial'
+        else:
+            return '○', 'group-name group-all-stopped'
 
-        member_names = ', '.join([s.name for s in self.group_info.servers[:5]])
+    def _detail_text(self) -> str:
+        running, total = self._counts()
+        members = ', '.join(s.name for s in self.group_info.servers[:5])
         if len(self.group_info.servers) > 5:
-            member_names += '...'
+            members += '...'
+        return f'{running}/{total} online  {members}'
 
-        yield Label(f'Members: {member_names}', classes='group-members')
+    def compose(self) -> ComposeResult:
+        icon, cls = self._status_icon_and_class()
+        yield Label(f'{icon} {self.group_info.name}', classes=cls)
+        yield Label(self._detail_text(), classes='group-detail')
 
     def update(self, group_info: models.ServerGroupBrief) -> None:
         """Update the widget with new group information."""
         self.group_info = group_info
 
-        running_count = sum(
-            1
-            for s in self.group_info.servers
-            if s.status == models.ServerStatus.Running
-        )
-        total_count = len(self.group_info.servers)
+        icon, cls = self._status_icon_and_class()
+        name_label = self.query_one('.group-name', Label)
+        name_label.classes = cls
+        name_label.update(f'{icon} {self.group_info.name}')
 
-        self.query_one('.group-name', Label).update(f'Group: {self.group_info.name}')
-        self.query_one('.group-count', Label).update(f' ({total_count} members)')
-        self.query_one('.group-status', Label).update(
-            f' {running_count}/{total_count} online',
-        )
-
-        member_names = ', '.join([s.name for s in self.group_info.servers[:5]])
-        if len(self.group_info.servers) > 5:
-            member_names += '...'
-        self.query_one('.group-members', Label).update(f'Members: {member_names}')
+        self.query_one('.group-detail', Label).update(self._detail_text())
