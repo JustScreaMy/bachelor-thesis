@@ -78,9 +78,10 @@ class MainScreen(Screen):
         await self.refresh_list_ui()
         server_list.focus()
 
-    def _get_groups(self) -> list[models.ServerGroupBrief]:
+    @staticmethod
+    def _get_groups(servers: list[models.ServerBrief]) -> list[models.ServerGroupBrief]:
         groups_dict: dict[str, list[models.ServerBrief]] = {}
-        for server in self._all_servers:
+        for server in servers:
             for tag in server.tags:
                 if tag.startswith('pve-tui-'):
                     group_name = tag[len('pve-tui-') :]
@@ -105,10 +106,19 @@ class MainScreen(Screen):
 
     @work(exclusive=True)
     async def action_refresh(self) -> None:
-        cluster_service = self.app.cluster_service
+        discovery_service = self.app.discovery_service
 
         self.log('Refreshing server list...')
-        self._all_servers = await cluster_service.fetch_servers_brief()
+        try:
+            self._all_servers = await discovery_service.fetch_all_servers()
+        except Exception as e:
+            self.log(f'Error during refresh: {e}')
+            self.notify(
+                f'Failed to refresh server list: {e}',
+                severity='error',
+            )
+            return
+
         # Sort data to match expected display order
         self._all_servers.sort(key=lambda x: x.server_id)
 
@@ -124,7 +134,7 @@ class MainScreen(Screen):
             ]
             widget_class = ServerBrief
         else:
-            groups = self._get_groups()
+            groups = self._get_groups(self._all_servers)
             items_to_display = [(f'group-{g.name}', g) for g in groups]
             widget_class = ServerGroupBrief
 
@@ -198,6 +208,46 @@ class MainScreen(Screen):
         else:
             server_list.index = None
 
+        # Sync the right pane with updated server data
+        self._sync_right_pane()
+
+    def _sync_right_pane(self) -> None:
+        """Synchronizes the right pane with fresh data from _all_servers."""
+        split_view = self.query_one('#split-view', SplitView)
+        right_pane = split_view.right
+
+        if isinstance(right_pane, ServerActionList):
+            # Update the list of servers in the action list with fresh data
+            current_ids = {s.server_id for s in right_pane.servers}
+            fresh_servers = [s for s in self._all_servers if s.server_id in current_ids]
+            if fresh_servers:
+                right_pane.servers = fresh_servers
+            else:
+                # If all servers in the action list are gone, clear it
+                right_pane.servers = []
+
+        elif isinstance(right_pane, ServerDetailView):
+            # Update the detail view if the server still exists
+            current_server = right_pane.server
+            current_id = current_server.brief.server_id
+
+            matching_brief = next(
+                (s for s in self._all_servers if s.server_id == current_id),
+                None,
+            )
+
+            if matching_brief:
+                # We update the brief inside the detail view's server object
+                # This will trigger a re-compose or update if reactive
+                current_server.brief = matching_brief
+                # Force a refresh of the detail view content
+                # Since ServerDetailView is not yet reactive on its 'server'
+                # property for re-composing, we might need a better way,
+                # but for now updating the brief is a start.
+                # Actually, ServerDetailView is simple, we can just replace it
+                # to get a full fresh view with full details.
+                self._fetch_and_display_server_details(matching_brief, split_view)
+
     @on(MultiselectListView.Highlighted)
     def _handle_highlighted(self, message: MultiselectListView.Highlighted) -> None:
         """Handle when an item is highlighted."""
@@ -222,6 +272,7 @@ class MainScreen(Screen):
 
         if selected_children:
             selected_servers = []
+            selected_groups = []
             if self.current_view_mode == ViewMode.SERVERS:
                 selected_servers = [
                     child.query_one(ServerBrief).server_info
@@ -230,11 +281,14 @@ class MainScreen(Screen):
             else:
                 for child in selected_children:
                     group_info = child.query_one(ServerGroupBrief).group_info
+                    selected_groups.append(group_info)
                     selected_servers.extend(group_info.servers)
 
             # De-duplicate servers if they are in multiple groups
             unique_servers = {s.server_id: s for s in selected_servers}.values()
-            split_view.set_right_pane(ServerActionList(list(unique_servers)))
+            split_view.set_right_pane(
+                ServerActionList(list(unique_servers), list(selected_groups)),
+            )
         else:
             highlighted_item = server_list.highlighted_child
             if highlighted_item is not None:
@@ -252,16 +306,16 @@ class MainScreen(Screen):
         split_view: SplitView,
     ) -> None:
         """Fetch full server details and display them in the detail view."""
-        cluster_service = self.app.cluster_service
+        resource_service = self.app.resource_service
 
         try:
             if server_brief.type == models.ServerType.VM:
-                server_details = await cluster_service.fetch_server_details_qemu(
+                server_details = await resource_service.fetch_server_details_qemu(
                     server_brief.node,
                     server_brief.server_id,
                 )
             else:  # LXC
-                server_details = await cluster_service.fetch_server_details_lxc(
+                server_details = await resource_service.fetch_server_details_lxc(
                     server_brief.node,
                     server_brief.server_id,
                 )

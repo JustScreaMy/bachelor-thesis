@@ -16,12 +16,14 @@ class ProxmoxClient:
         proxmox_base_url (str): The base URL of the Proxmox VE server.
         auth_token_id (str): The authentication token ID for API access.
         auth_token (str): The authentication token for API access.
+        verify_ssl (bool): Whether to verify SSL certificates.
         _session (aiohttp.ClientSession | None): The underlying HTTP session.
     """
 
     proxmox_base_url: str
     auth_token_id: str
     auth_token: str
+    verify_ssl: bool
     _session: aiohttp.ClientSession | None
 
     def __init__(
@@ -29,10 +31,12 @@ class ProxmoxClient:
         proxmox_base_url: str,
         auth_token_id: str,
         auth_token: str,
+        verify_ssl: bool = False,
     ) -> None:
         self.proxmox_base_url = proxmox_base_url
         self.auth_token_id = auth_token_id
         self.auth_token = auth_token
+        self.verify_ssl = verify_ssl
         self._session = None
 
     @classmethod
@@ -58,6 +62,7 @@ class ProxmoxClient:
             proxmox_base_url=server_config.base_url,
             auth_token_id=server_config.token_id,
             auth_token=server_config.token,
+            verify_ssl=server_config.verify_ssl,
         )
 
     @property
@@ -73,7 +78,7 @@ class ProxmoxClient:
         or is closed.
         """
         if self._session is None or self._session.closed:
-            connector = aiohttp.TCPConnector(ssl=False)
+            connector = aiohttp.TCPConnector(ssl=self.verify_ssl)
             headers = {
                 'Authorization': f'PVEAPIToken={self.auth_token_id}={self.auth_token}',
             }

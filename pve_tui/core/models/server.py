@@ -97,6 +97,7 @@ class ServerArch(StrEnum):
         UNKNOWN (str): Unknown architecture.
     """
 
+    AARCH64 = 'aarch64'
     AMD64 = 'amd64'
     ARM64 = 'arm64'
     I386 = 'i386'
@@ -122,7 +123,7 @@ class ServerBase:
 class ServerQEMU(ServerBase):
     cpu_type: str
 
-    baloon: int
+    balloon: int
 
 
 @dataclass

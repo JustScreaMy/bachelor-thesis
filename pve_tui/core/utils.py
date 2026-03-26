@@ -17,6 +17,24 @@ def load_config() -> ApplicationConfig:
 
     config = ApplicationConfig.from_toml(config_file)
 
+    # Environment variable overrides for token_id and token
+    # This applies to all contexts if set
+    env_token_id = os.environ.get('PVE_TOKEN_ID')
+    env_token = os.environ.get('PVE_TOKEN')
+
+    if env_token_id or env_token:
+        from pve_tui.core.models.client_config import ContextConfig
+
+        new_contexts = {}
+        for name, ctx in config.contexts.items():
+            new_contexts[name] = ContextConfig(
+                base_url=ctx.base_url,
+                token_id=env_token_id if env_token_id else ctx.token_id,
+                token=env_token if env_token else ctx.token,
+                verify_ssl=ctx.verify_ssl,
+            )
+        config.contexts = new_contexts
+
     return config
 
 

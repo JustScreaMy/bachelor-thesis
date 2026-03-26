@@ -2,7 +2,7 @@ from typing import ClassVar
 from typing import Iterable
 from typing import Optional
 
-from textual._loop import loop_from_index
+from textual._loop import loop_from_index  # noqa
 from textual.await_complete import AwaitComplete
 from textual.await_remove import AwaitRemove
 from textual.binding import Binding
@@ -72,7 +72,7 @@ class MultiselectListView(VerticalScroll, can_focus=True, can_focus_children=Fal
     """
 
     BINDINGS: ClassVar[list[BindingType]] = [
-        Binding('space', 'select_cursor', 'Select server'),
+        Binding('space', 'select_cursor', 'Select'),
         Binding('up', 'cursor_up', 'Cursor up', show=False),
         Binding('down', 'cursor_down', 'Cursor down', show=False),
     ]
@@ -156,7 +156,7 @@ class MultiselectListView(VerticalScroll, can_focus=True, can_focus_children=Fal
         *children: MultiselectListItem,
         initial_index: int | None = 0,
         name: str | None = None,
-        id: str | None = None,
+        id: str | None = None,  # noqa
         classes: str | None = None,
         disabled: bool = False,
     ) -> None:
