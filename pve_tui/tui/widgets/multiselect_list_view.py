@@ -33,39 +33,45 @@ class MultiselectListView(VerticalScroll, can_focus=True, can_focus_children=Fal
     MultiselectListView {
         background: $surface;
         & > MultiselectListItem {
-            color: $foreground;
+            color: $text;
             height: auto;
             overflow: hidden hidden;
             width: 1fr;
 
             &.-hovered {
-                background: $accent 20%;
+                background: $foreground 8%;
             }
 
             &.-highlight {
                 color: $text;
-                background: $secondary-background-lighten-2;
-                text-style: $block-cursor-text-style;
+                background: $foreground 10%;
             }
 
             &.-selected {
-                color: $text;
-                background: $secondary-background-darken-2;
-                text-style: $block-cursor-text-style;
+                color: $primary-lighten-2;
+                background: $primary 15%;
+            }
+
+            &.-selected.-highlight {
+                color: $primary-lighten-2;
+                background: $primary 25%;
             }
         }
 
         &:focus {
-            background-tint: $foreground 5%;
-            & > MultiselectListItem.-selected {
-                color: $background;
-                background: $primary-background-darken-2;
-                text-style: $block-cursor-blurred-text-style;
-            }
             & > MultiselectListItem.-highlight {
-                color: $background;
-                background: $primary-background-lighten-2;
-                text-style: $block-cursor-blurred-text-style;
+                color: $text;
+                background: $primary;
+                text-style: bold;
+            }
+            & > MultiselectListItem.-selected {
+                color: $primary-lighten-2;
+                background: $primary 15%;
+            }
+            & > MultiselectListItem.-selected.-highlight {
+                color: $text;
+                background: $primary;
+                text-style: bold;
             }
         }
     }

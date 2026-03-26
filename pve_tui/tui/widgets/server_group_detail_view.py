@@ -1,7 +1,6 @@
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widgets import DataTable
-from textual.widgets import Label
 from textual.widgets import Static
 
 from pve_tui.core import models
@@ -13,17 +12,22 @@ class ServerGroupDetailView(VerticalScroll):
     DEFAULT_CSS = """
     ServerGroupDetailView {
         height: 100%;
-        padding: 2;
+        padding: 1 2;
     }
 
     .group-title {
-        color: $primary;
-        text-style: bold underline;
+        color: $primary-lighten-1;
+        text-style: bold;
+    }
+
+    .group-summary {
+        color: $text-muted;
         margin-bottom: 1;
     }
 
-    .group-info {
-        margin-bottom: 1;
+    ServerGroupDetailView DataTable {
+        height: auto;
+        margin-top: 1;
     }
     """
 
@@ -32,26 +36,23 @@ class ServerGroupDetailView(VerticalScroll):
         self.group = group
 
     def compose(self) -> ComposeResult:
-        running_count = sum(
+        running = sum(
             1 for s in self.group.servers if s.status == models.ServerStatus.Running
         )
-        total_count = len(self.group.servers)
+        total = len(self.group.servers)
 
-        yield Static(f'Group: {self.group.name}', classes='group-title')
-        yield Label(f'Total Servers: {total_count}', classes='group-info')
-        yield Label(f'Online Servers: {running_count}', classes='group-info')
-        yield Static()  # Spacer
+        yield Static(self.group.name, classes='group-title')
+        yield Static(f'{running}/{total} online', classes='group-summary')
 
-        yield Static('Group Members', classes='group-title')
         table = DataTable()
-        table.add_columns('ID', 'Name', 'Type', 'Status', 'Node')
+        table.add_columns('', 'ID', 'Name', 'Type', 'Node')
         for s in self.group.servers:
-            status_icon = '●' if s.status == models.ServerStatus.Running else '○'
+            icon = '●' if s.status == models.ServerStatus.Running else '○'
             table.add_row(
+                icon,
                 str(s.server_id),
                 s.name,
                 s.type.value.upper(),
-                f'{status_icon} {s.status.value}',
                 s.node,
             )
         yield table

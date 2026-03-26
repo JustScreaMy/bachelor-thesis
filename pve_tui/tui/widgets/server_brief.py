@@ -1,5 +1,4 @@
 from textual.app import ComposeResult
-from textual.containers import Horizontal
 from textual.widget import Widget
 from textual.widgets import Label
 
@@ -13,41 +12,20 @@ class ServerBrief(Widget):
     DEFAULT_CSS = """
         ServerBrief {
             height: auto;
-            border: none $primary-darken-1;
-            padding: 1;
-        }
-
-        ServerBrief:hover {
-            background: $panel-lighten-3;
-        }
-
-        .server-header {
-            width: 100%;
-            height: 1;
-        }
-
-        .server-name {
-            text-style: bold;
-            color: $text;
-        }
-
-        .server-id {
-            color: $text-muted;
+            padding: 0 1;
         }
 
         .status-running {
             color: $success;
-            text-style: bold;
         }
 
         .status-stopped {
-            color: $error;
-            text-style: bold;
+            color: $text-muted;
         }
 
-        .metrics {
-            margin-top: 1;
+        .server-detail {
             color: $text-muted;
+            padding: 0 0 0 2;
         }
     """
 
@@ -56,70 +34,40 @@ class ServerBrief(Widget):
         super().__init__(**kwargs)
         self.server_info = server_info
 
-    def compose(self) -> ComposeResult:
-        # Determine status class
-        status_class = (
+    def _status_icon(self) -> str:
+        return '●' if self.server_info.status == models.ServerStatus.Running else '○'
+
+    def _status_class(self) -> str:
+        return (
             'status-running'
             if self.server_info.status == models.ServerStatus.Running
             else 'status-stopped'
         )
-        status_icon = (
-            '●' if self.server_info.status == models.ServerStatus.Running else '○'
-        )
 
-        yield Horizontal(
-            Label(f'{self.server_info.name}', classes='server-name'),
-            Label(
-                f' {self.server_info.type.value}#{self.server_info.server_id}',
-                classes='server-id',
-            ),
-            Label(
-                f' {status_icon} {self.server_info.status.value}',
-                classes=f'server-status {status_class}',
-            ),
-            classes='server-header',
-        )
+    def _detail_text(self) -> str:
+        s = self.server_info
+        parts = [f'{s.type.value}#{s.server_id}']
+        if s.status == models.ServerStatus.Running:
+            cpu = s.cpu_usage * 100
+            mem_used = int(s.memory_used / consts.GIGABYTES)
+            mem_total = int(s.memory / consts.GIGABYTES)
+            parts.append(f'cpu {cpu:.0f}%')
+            parts.append(f'mem {mem_used}/{mem_total}G')
+        return '  '.join(parts)
 
-        if self.server_info.status == models.ServerStatus.Running:
-            metrics_text = (
-                f'CPU: {self.server_info.cpu_usage * 100:.2f}% ({self.server_info.cpus}c) | '
-                f'Mem: {int(self.server_info.memory_used / consts.GIGABYTES)}G/{int(self.server_info.memory / consts.GIGABYTES)}G'
-            )
-            yield Label(metrics_text, classes='metrics')
-        else:
-            yield Label('Offline', classes='metrics')
+    def compose(self) -> ComposeResult:
+        yield Label(
+            f'{self._status_icon()} {self.server_info.name}',
+            classes=f'server-name {self._status_class()}',
+        )
+        yield Label(self._detail_text(), classes='server-detail')
 
     def update(self, server_info: models.ServerBrief) -> None:
         """Update the widget with new server information."""
         self.server_info = server_info
 
-        # Update name and ID
-        self.query_one('.server-name', Label).update(f'{self.server_info.name}')
-        self.query_one('.server-id', Label).update(
-            f' {server_info.type.value}#{self.server_info.server_id}',
-        )
+        name_label = self.query_one('.server-name', Label)
+        name_label.classes = f'server-name {self._status_class()}'
+        name_label.update(f'{self._status_icon()} {self.server_info.name}')
 
-        # Update status
-        status_class = (
-            'status-running'
-            if self.server_info.status == models.ServerStatus.Running
-            else 'status-stopped'
-        )
-        status_icon = (
-            '●' if self.server_info.status == models.ServerStatus.Running else '○'
-        )
-
-        status_label = self.query_one('.server-status', Label)
-        status_label.classes = f'server-status {status_class}'
-        status_label.update(f' {status_icon} {self.server_info.status.value}')
-
-        # Update metrics
-        metrics_label = self.query_one('.metrics', Label)
-        if self.server_info.status == models.ServerStatus.Running:
-            metrics_text = (
-                f'CPU: {self.server_info.cpu_usage * 100:.2f}% ({self.server_info.cpus}c) | '
-                f'Mem: {int(self.server_info.memory_used / consts.GIGABYTES)}G/{int(self.server_info.memory / consts.GIGABYTES)}G'
-            )
-            metrics_label.update(metrics_text)
-        else:
-            metrics_label.update('Offline')
+        self.query_one('.server-detail', Label).update(self._detail_text())

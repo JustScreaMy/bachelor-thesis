@@ -19,14 +19,14 @@ if TYPE_CHECKING:
     from pve_tui.tui.app import PveTuiApp
 
 from pve_tui.tui.widgets import (
+    MultiselectListItem,
     MultiselectListView,
+    ServerBrief,
     ServerDetailView,
     ServerGroupBrief,
     ServerGroupDetailView,
+    SplitView,
 )
-from pve_tui.tui.widgets import MultiselectListItem
-from pve_tui.tui.widgets import SplitView
-from pve_tui.tui.widgets import ServerBrief
 
 
 class ViewMode(Enum):
@@ -46,9 +46,7 @@ class MainScreen(Screen):
         #server-list {
             height: 100%;
             scrollbar-visibility: hidden;
-            scrollbar-size: 0 0;
             background: $surface;
-            padding: 0 1;
         }
     """
 
@@ -167,7 +165,7 @@ class MainScreen(Screen):
                         _, curr_sid_str = current_id.split('-')
                         _, item_sid_str = item_id.split('-')
                         is_after = int(curr_sid_str) > int(item_sid_str)
-                    except (ValueError, AttributeError):
+                    except ValueError, AttributeError:
                         is_after = current_id > item_id
                 else:
                     is_after = current_id > item_id
@@ -212,22 +210,48 @@ class MainScreen(Screen):
         self._sync_right_pane()
 
     def _sync_right_pane(self) -> None:
-        """Synchronizes the right pane with fresh data from _all_servers."""
+        """Synchronizes the right pane with the current view mode and data."""
         split_view = self.query_one('#split-view', SplitView)
+        server_list = self.query_one('#server-list', MultiselectListView)
         right_pane = split_view.right
 
+        # If the right pane type doesn't match the current view mode,
+        # force an update from the currently highlighted item.
+        pane_stale = (
+            self.current_view_mode == ViewMode.GROUPS
+            and isinstance(right_pane, ServerDetailView)
+        ) or (
+            self.current_view_mode == ViewMode.SERVERS
+            and isinstance(right_pane, ServerGroupDetailView)
+        )
+
+        if pane_stale:
+            highlighted = server_list.highlighted_child
+            if highlighted is not None:
+                if self.current_view_mode == ViewMode.GROUPS:
+                    group_briefs = highlighted.query(ServerGroupBrief)
+                    if group_briefs:
+                        split_view.set_right_pane(
+                            ServerGroupDetailView(group_briefs.first().group_info),
+                        )
+                else:
+                    server_briefs = highlighted.query(ServerBrief)
+                    if server_briefs:
+                        self._fetch_and_display_server_details(
+                            server_briefs.first().server_info,
+                            split_view,
+                        )
+            return
+
         if isinstance(right_pane, ServerActionList):
-            # Update the list of servers in the action list with fresh data
             current_ids = {s.server_id for s in right_pane.servers}
             fresh_servers = [s for s in self._all_servers if s.server_id in current_ids]
             if fresh_servers:
                 right_pane.servers = fresh_servers
             else:
-                # If all servers in the action list are gone, clear it
                 right_pane.servers = []
 
         elif isinstance(right_pane, ServerDetailView):
-            # Update the detail view if the server still exists
             current_server = right_pane.server
             current_id = current_server.brief.server_id
 
@@ -237,15 +261,7 @@ class MainScreen(Screen):
             )
 
             if matching_brief:
-                # We update the brief inside the detail view's server object
-                # This will trigger a re-compose or update if reactive
                 current_server.brief = matching_brief
-                # Force a refresh of the detail view content
-                # Since ServerDetailView is not yet reactive on its 'server'
-                # property for re-composing, we might need a better way,
-                # but for now updating the brief is a start.
-                # Actually, ServerDetailView is simple, we can just replace it
-                # to get a full fresh view with full details.
                 self._fetch_and_display_server_details(matching_brief, split_view)
 
     @on(MultiselectListView.Highlighted)
@@ -254,14 +270,23 @@ class MainScreen(Screen):
         server_list = self.query_one('#server-list', MultiselectListView)
         split_view = self.query_one('#split-view', SplitView)
 
-        # Only update if no items are selected
-        if len(server_list.selected_children) == 0 and message.item is not None:
-            if self.current_view_mode == ViewMode.SERVERS:
-                server_brief = message.item.query_one(ServerBrief).server_info
-                self._fetch_and_display_server_details(server_brief, split_view)
-            else:
-                group_info = message.item.query_one(ServerGroupBrief).group_info
-                split_view.set_right_pane(ServerGroupDetailView(group_info))
+        if len(server_list.selected_children) > 0 or message.item is None:
+            return
+
+        # Check what widget is actually inside the item to avoid
+        # querying for the wrong type during a view mode switch.
+        server_briefs = message.item.query(ServerBrief)
+        group_briefs = message.item.query(ServerGroupBrief)
+
+        if server_briefs:
+            self._fetch_and_display_server_details(
+                server_briefs.first().server_info,
+                split_view,
+            )
+        elif group_briefs:
+            split_view.set_right_pane(
+                ServerGroupDetailView(group_briefs.first().group_info),
+            )
 
     @on(MultiselectListItem.Selected)
     def _handle_selected(self, _message: MultiselectListItem.Selected) -> None:

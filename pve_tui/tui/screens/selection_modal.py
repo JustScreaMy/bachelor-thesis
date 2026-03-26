@@ -14,7 +14,7 @@ class SelectionModal(ModalScreen[str]):
     DEFAULT_CSS = """
     SelectionModal {
         align: center middle;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.6);
     }
 
     #modal-container {
@@ -22,27 +22,27 @@ class SelectionModal(ModalScreen[str]):
         height: auto;
         max-height: 80%;
         border: solid $primary;
-        background: $panel;
-        padding: 1 4;
+        background: $surface;
+        padding: 1 3;
     }
 
     #modal-title {
         text-align: center;
         text-style: bold;
-        color: $text;
+        color: $primary-lighten-1;
         margin-bottom: 1;
     }
 
     #modal-options {
         height: auto;
         max-height: 16;
-        border: solid $primary-darken-1;
+        border: solid $surface-lighten-2;
         background: $surface;
         margin-bottom: 1;
     }
 
     #modal-options > .option-list--option-highlighted {
-        background: $accent;
+        background: $primary;
         color: $text;
         text-style: bold;
     }

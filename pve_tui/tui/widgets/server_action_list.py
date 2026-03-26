@@ -32,7 +32,7 @@ class ServerActionList(Vertical):
     }
 
     .action-header {
-        color: $text;
+        color: $primary-lighten-1;
         text-style: bold;
         margin-bottom: 1;
         text-align: center;
@@ -61,7 +61,7 @@ class ServerActionList(Vertical):
     }
 
     #action-options > .option-list--option.-highlight {
-        background: $accent;
+        background: $primary;
         color: $text;
         text-style: bold;
     }

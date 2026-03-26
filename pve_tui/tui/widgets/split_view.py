@@ -23,12 +23,11 @@ class SplitView(Widget):
 
     .split-pane {
         height: 100%;
-        padding: 0 1;
     }
 
     SplitView > .split-pane:first-child {
-        border-right: solid $border;
-        background: $panel;
+        border-right: solid $surface-darken-1;
+        background: $surface;
     }
 
     SplitView > .split-pane:last-child {
