@@ -7,6 +7,7 @@ from rich.table import Table
 
 from ..core.services.context import create_service_context
 from .group import group_app
+from .init import init
 from .server import server_app
 from .snapshot import snapshot_app
 from .utils import AsyncTyper
@@ -22,6 +23,7 @@ app = AsyncTyper()
 app.add_typer(server_app)
 app.add_typer(snapshot_app)
 app.add_typer(group_app)
+app.command(name='init')(init)
 console = Console()
 
 
