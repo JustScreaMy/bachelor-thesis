@@ -9,14 +9,18 @@ pve_tui — a Python TUI and CLI for managing Proxmox VE clusters. The TUI uses 
 ## Commands
 
 ```bash
-# Install dependencies
-uv sync
-
 # Run TUI
-uv run pve-tui
+pve-tui
 
 # Run CLI
-uv run pve <command>
+pve <command>
+```
+
+### Development
+
+```bash
+# Install with dev dependencies
+uv sync
 
 # Lint & format (via prek / ruff)
 uv run ruff check .
@@ -62,6 +66,28 @@ pve_tui/
 - Action managers (`status`, `snapshot`, `group`) support bulk operations with parallel execution
 - Server groups are derived from Proxmox tags with `pve-tui-` prefix
 - Config: TOML with multi-context support, env var overrides (`PVE_TOKEN_ID`, `PVE_TOKEN`)
+
+## Installation
+
+```bash
+# Via uv (recommended)
+uv tool install pve-tui --index-url https://git.kropcloud.net/api/packages/JustScreaMy/pypi/simple/ --extra-index-url https://pypi.org/simple/
+
+# Via pipx
+pipx install pve-tui --index-url https://git.kropcloud.net/api/packages/JustScreaMy/pypi/simple/ --pip-args='--extra-index-url https://pypi.org/simple/'
+```
+
+Package is hosted on a Forgejo PyPI registry at `git.kropcloud.net`.
+
+## Release Cycle
+
+Versioning is managed by **bumpver** (dev dependency). The release flow:
+
+1. `uv run bumpver update --patch` (or `--minor`/`--major`) bumps version in `pyproject.toml`, runs `scripts/pre-bump.sh` (which updates `uv.lock`), commits, and creates a git tag.
+2. Pushing the tag to `master` triggers the **Woodpecker CI** pipeline (`.woodpecker/release.yaml`).
+3. CI builds the package with `uv build` and publishes to the Forgejo PyPI registry.
+
+Do **not** push tags without ensuring `uv.lock` is in sync — the pre-bump hook handles this automatically.
 
 ## Code Style
 
