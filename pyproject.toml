@@ -19,6 +19,7 @@ pve = "pve_tui.cli.main:app"
 
 [dependency-groups]
 dev = [
+    "bumpver>=2025.1131",
     "ipython>=9.9.0",
     "ruff>=0.15.8",
     "textual-dev>=1.8.0",
