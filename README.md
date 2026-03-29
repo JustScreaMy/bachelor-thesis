@@ -5,9 +5,24 @@ A terminal-based tool for managing Proxmox VE clusters. Provides both an interac
 ## Requirements
 
 - Python 3.14+
-- [uv](https://docs.astral.sh/uv/) package manager
+- [uv](https://docs.astral.sh/uv/) (recommended) or [pipx](https://pipx.pypa.io/)
 
 ## Installation
+
+```bash
+uv tool install pve-tui --index-url https://git.kropcloud.net/api/packages/JustScreaMy/pypi/simple/ --extra-index-url https://pypi.org/simple/
+```
+
+<details>
+<summary>Alternative: pipx</summary>
+
+```bash
+pipx install pve-tui --index-url https://git.kropcloud.net/api/packages/JustScreaMy/pypi/simple/ --pip-args='--extra-index-url https://pypi.org/simple/'
+```
+
+</details>
+
+### Development
 
 ```bash
 uv sync
