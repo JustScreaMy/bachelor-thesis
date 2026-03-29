@@ -27,6 +27,18 @@ dev = [
 [tool.uv.build-backend]
 module-root = ""
 
+[tool.bumpver]
+current_version = "0.1.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "release {new_version}"
+commit = true
+tag = true
+tag_message = "v{new_version}"
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = ['version = "{version}"']
+
 [tool.ruff]
 target-version = "py314"
 
