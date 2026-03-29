@@ -548,7 +548,7 @@ wheels = [
 
 [[package]]
 name = "pve-tui"
-version = "1.2.1"
+version = "1.2.4"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
