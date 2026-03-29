@@ -7,6 +7,7 @@ from functools import wraps
 from typing import Any
 from typing import Callable
 
+from rich.console import Console
 from typer import Typer
 
 
@@ -17,7 +18,15 @@ class AsyncTyper(Typer):
 
             @wraps(func)
             def runner(*args: Any, **kwargs: Any) -> Any:
-                return asyncio.run(func(*args, **kwargs))
+                try:
+                    return asyncio.run(func(*args, **kwargs))
+                except FileNotFoundError as e:
+                    console = Console()
+                    console.print(f'[yellow]{e}[/yellow]')
+                    console.print(
+                        'Run [bold]pve init[/bold] to create a sample config.',
+                    )
+                    raise SystemExit(1)
 
             decorator(runner)
         else:

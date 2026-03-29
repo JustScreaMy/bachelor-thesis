@@ -46,15 +46,8 @@ def main(
 @app.command(name='list')
 async def list_servers() -> None:
     """List all servers in the Proxmox cluster."""
-    try:
-        async with create_service_context() as ctx:
-            servers = await ctx.discovery.fetch_all_servers()
-    except FileNotFoundError as e:
-        console.print(f'[red]Configuration error:[/red] {e}')
-        raise SystemExit(1)
-    except Exception as e:
-        console.print(f'[red]Failed to fetch servers:[/red] {e}')
-        raise SystemExit(1)
+    async with create_service_context() as ctx:
+        servers = await ctx.discovery.fetch_all_servers()
 
     servers.sort(key=lambda x: x.server_id)
 
