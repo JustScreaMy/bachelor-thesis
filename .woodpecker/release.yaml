@@ -1,6 +1,6 @@
 when:
-  event: tag
-  tag: "v*"
+  - event: tag
+    ref: "refs/tags/v*"
 
 steps:
   - name: build
