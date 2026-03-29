@@ -35,7 +35,7 @@ commit = true
 tag = true
 tag_message = "v{new_version}"
 push = false
-pre_commit_hook = "scripts/pre-bump.sh"
+pre_commit_hook = "python scripts/pre-bump.py"
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['version = "{version}"']
