@@ -53,7 +53,7 @@ Environment variables `PVE_TOKEN_ID` and `PVE_TOKEN` override config values.
 ### TUI
 
 ```bash
-uv run pve-tui
+pve-tui
 ```
 
 Interactive split-view interface with server/group list on the left and details/actions on the right.
@@ -72,7 +72,7 @@ Interactive split-view interface with server/group list on the left and details/
 ### CLI
 
 ```bash
-uv run pve [command]
+pve [command]
 ```
 
 All commands accept VMIDs or group names as targets.
@@ -110,6 +110,9 @@ pve group detach <group> <targets...>   # Detach servers from group
 ## Development
 
 ```bash
+# Install with dev dependencies
+uv sync
+
 # Lint
 uv run ruff check .
 
