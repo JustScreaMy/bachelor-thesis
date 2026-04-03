@@ -48,6 +48,34 @@ The config format supports multiple contexts (see `config.example.toml`), but co
 
 Environment variables `PVE_TOKEN_ID` and `PVE_TOKEN` override config values.
 
+### API Token Permissions
+
+The token needs the following minimum privileges for full functionality:
+
+| Privilege              | Used for                                    |
+| ---------------------- | ------------------------------------------- |
+| `Sys.Audit`            | Listing nodes and cluster resources         |
+| `VM.Audit`             | Reading VM/CT status, config, and snapshots |
+| `VM.PowerMgmt`         | Start, stop, shutdown, reboot               |
+| `VM.Snapshot`          | Creating snapshots                          |
+| `VM.Snapshot.Rollback` | Rolling back to a snapshot                  |
+| `VM.Config.Options`    | Managing group tags on VMs/CTs              |
+
+To set up an API token with the minimum required permissions, run the following on your Proxmox node (replace `user@realm` with your actual user):
+
+```bash
+# 1. Create a role with the required privileges
+pveum role add TUIRole -privs "VM.Audit,VM.PowerMgmt,VM.Snapshot,VM.Snapshot.Rollback,VM.Config.Options,Sys.Audit"
+
+# 2. Create an API token (save the displayed secret — it is shown only once)
+pveum user token add user@realm pve-tui
+
+# 3. Assign the role to the token
+pveum aclmod / -tokens user@realm!pve-tui -roles TUIRole
+```
+
+> **Note:** If the token has **Privilege Separation** enabled (the default), permissions must be assigned directly to the token (step 3), not just to the user.
+
 ## Usage
 
 ### TUI
