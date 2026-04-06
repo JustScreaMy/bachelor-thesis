@@ -65,14 +65,16 @@ To set up an API token with the minimum required permissions, run the following 
 
 ```bash
 # 1. Create a role with the required privileges
-pveum role add TUIRole -privs "VM.Audit,VM.PowerMgmt,VM.Snapshot,VM.Snapshot.Rollback,VM.Config.Options,Sys.Audit"
+pveum role add TUIRole -privs 'VM.Audit,VM.PowerMgmt,VM.Snapshot,VM.Snapshot.Rollback,VM.Config.Options,Sys.Audit'
 
 # 2. Create an API token (save the displayed secret — it is shown only once)
 pveum user token add user@realm pve-tui
 
 # 3. Assign the role to the token
-pveum aclmod / -tokens user@realm!pve-tui -roles TUIRole
+pveum aclmod / -tokens 'user@realm!pve-tui' -roles TUIRole
 ```
+
+> **Tip:** To list existing users and see available realms, run `pveum user list`.
 
 > **Note:** If the token has **Privilege Separation** enabled (the default), permissions must be assigned directly to the token (step 3), not just to the user.
 
