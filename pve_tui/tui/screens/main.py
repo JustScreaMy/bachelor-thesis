@@ -13,6 +13,8 @@ from textual.widgets import Footer
 from textual.widgets import Header
 
 from pve_tui.core import models
+from pve_tui.core.exceptions import AuthenticationError
+from pve_tui.tui.screens.auth_error import AuthErrorScreen
 from pve_tui.tui.widgets.server_action_list import ServerActionList
 
 if TYPE_CHECKING:
@@ -109,6 +111,10 @@ class MainScreen(Screen):
         self.log('Refreshing server list...')
         try:
             self._all_servers = await discovery_service.fetch_all_servers()
+        except AuthenticationError as e:
+            self.log(f'Authentication error: {e}')
+            self.app.push_screen(AuthErrorScreen(str(e)))
+            return
         except Exception as e:
             self.log(f'Error during refresh: {e}')
             self.notify(

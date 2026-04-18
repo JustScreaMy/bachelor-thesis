@@ -6,6 +6,7 @@ from typing import Self
 import aiohttp
 
 from .. import models
+from ..exceptions import AuthenticationError
 
 
 class ProxmoxClient:
@@ -113,12 +114,21 @@ class ProxmoxClient:
 
             # We assume the caller handles the response lifecycle
             # The session remains open for subsequent requests
-            try:
-                async with session.request(method, url, **kwargs) as resp:
-                    yield resp
-            except aiohttp.ClientError as e:
-                # Optional: Log error here
-                raise e
+            async with session.request(method, url, **kwargs) as resp:
+                if resp.status == 401:
+                    try:
+                        body = await resp.json()
+                        detail = body.get('errors', {}).get(
+                            'username',
+                            resp.reason or 'unknown error',
+                        )
+                    except Exception:
+                        detail = resp.reason or 'unknown error'
+                    raise AuthenticationError(
+                        f'Authentication failed: {detail}. '
+                        f'Check your token ID and token value in the configuration.',
+                    )
+                yield resp
 
         return _request()
 
